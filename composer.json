@@ -1,0 +1,57 @@
+{
+    "name": "dmitryrogolev/can",
+    "description": "Functional permissions for the Laravel framework.",
+    "version": "0.0.1",
+    "type": "library",
+    "keywords": [
+        "permissions",
+        "can",
+        "laravel",
+        "laravel-permissions",
+        "laravel-can"
+    ],
+    "homepage": "https://github.com/dmitry-rogolev/Can",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Dmitry Rogolev",
+            "email": "work.drogolev@internet.ru",
+            "homepage": "https://dmitryrogolev.ru",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "laravel/framework": "^10.30"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.14"
+    },
+    "autoload": {
+        "psr-4": {
+            "dmitryrogolev\\Can\\": "src/",
+            "dmitryrogolev\\Can\\Database\\": "database/", 
+            "dmitryrogolev\\Can\\Database\\Migrations\\": "database/migrations/", 
+            "dmitryrogolev\\Can\\Database\\Factories\\": "database/factories/", 
+            "dmitryrogolev\\Can\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "dmitryrogolev\\Can\\Tests\\": "tests/", 
+            "dmitryrogolev\\Can\\Tests\\Seeders\\": "tests/seeders/", 
+            "dmitryrogolev\\Can\\Tests\\Migrations\\": "tests/migrations/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "dmitryrogolev\\Can\\Providers\\CanServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    }
+}

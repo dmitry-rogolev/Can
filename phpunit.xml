@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="vendor/autoload.php" backupGlobals="false" colors="true" processIsolation="false" stopOnFailure="true" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.4/phpunit.xsd" cacheDirectory=".phpunit.cache" backupStaticProperties="false">
+  <coverage/>
+  <testsuites>
+    <testsuite name="Feature">
+      <directory suffix="Test.php">./tests/Feature</directory>
+    </testsuite>
+  </testsuites>
+  <php>
+    <env name="APP_KEY" value="base64:17D5MHqbPTIPEHCFqyaari5C7wKMoSceYyvwEXorYuI="/>
+    <env name="APP_ENV" value="testing"/>
+    <env name="DB_CONNECTION" value="testing"/>
+    <env name="CACHE_DRIVER" value="array"/>
+    <env name="SESSION_DRIVER" value="array"/>
+    <env name="QUEUE_DRIVER" value="sync"/>
+    <env name="DB_FOREIGN_KEYS" value="true" />
+    
+    <env name="CAN_CONNECTION" value="" />
+    <env name="CAN_TABLES_PERMISSIONS" value="permissions" />
+    <env name="CAN_TABLES_PERMISSIONABLES" value="permissionables" />
+    <env name="CAN_RELATIONS_PERMISSIONABLE" value="permissionable" />
+    <env name="CAN_PRIMARY_KEY" value="id" />
+    <env name="CAN_MODELS_PERMISSION" value="dmitryrogolev\Can\Tests\Permission" />
+    <env name="CAN_MODELS_PERMISSIONABLE" value="dmitryrogolev\Can\Models\Permissionable" />
+    <env name="CAN_MODELS_USER" value="dmitryrogolev\Can\Tests\User" />
+    <env name="CAN_FACTORIES_PERMISSION" value="dmitryrogolev\Can\Database\Factories\PermissionFactory" />
+    <env name="CAN_SEEDERS_PERMISSION" value="dmitryrogolev\Can\Database\Seeders\PermissionSeeder" />
+    <env name="CAN_SEPARATOR" value="." />
+    <env name="CAN_USES_UUID" value="true" />
+    <env name="CAN_USES_SOFT_DELETES" value="true" />
+    <env name="CAN_USES_TIMESTAMPS" value="true" />
+    <env name="CAN_USES_MIGRATIONS" value="true" />
+    <env name="CAN_USES_SEED" value="true" />
+    <env name="CAN_USES_BLADE" value="true" />
+    <env name="CAN_USES_MIDDLEWARES" value="true" />
+    <env name="CAN_USES_LOAD_ON_UPDATE" value="true" />
+    <env name="CAN_USES_EXTEND_CAN_METHOD" value="true" />
+    
+  </php>
+  <source>
+    <include>
+      <directory suffix=".php">src/</directory>
+    </include>
+  </source>
+</phpunit>
