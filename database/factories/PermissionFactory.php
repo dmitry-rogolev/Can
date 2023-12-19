@@ -4,16 +4,18 @@ namespace dmitryrogolev\Can\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * Фабрика разрешения.
+ */
 class PermissionFactory extends Factory
 {
     /**
      * Создаем фабрику и указываем имя модели.
-     *
-     * @param  mixed  ...$parameters
      */
-    public function __construct(...$parameters)
+    public function __construct(mixed ...$parameters)
     {
         parent::__construct(...$parameters);
+
         $this->model = config('can.models.permission');
     }
 
@@ -24,12 +26,13 @@ class PermissionFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->unique()->name();
+        $name = fake()->unique()->word();
+        $slugName = app($this->model)->getSlugName();
 
         return [
-            'name' => $name,
-            'slug' => $name,
-            'description' => $name.' permission',
+            'name' => ucfirst($name),
+            $slugName => $this->model::toSlug($name),
+            'description' => ucfirst($name).' permission',
         ];
     }
 }

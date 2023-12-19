@@ -12,22 +12,26 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Запустить миграцию
+     * Имя таблицы.
+     */
+    protected string $table;
+
+    public function __construct()
+    {
+        $this->table = config('can.tables.permissionables');
+    }
+
+    /**
+     * Запустить миграцию.
      */
     public function up(): void
     {
-        $table = config('can.tables.permissionables');
-        $connection = config('can.connection');
+        $exists = Schema::hasTable($this->table);
 
-        if (! Schema::connection($connection)->hasTable($table)) {
-            Schema::connection($connection)->create($table, function (Blueprint $table) {
+        if (! $exists) {
+            Schema::create($this->table, function (Blueprint $table) {
                 $table->foreignIdFor(config('can.models.permission'));
-
-                if (config('can.uses.uuid')) {
-                    $table->uuidMorphs(config('can.relations.permissionable'));
-                } else {
-                    $table->morphs(config('can.relations.permissionable'));
-                }
+                $table->morphs(config('can.relations.permissionable'));
 
                 if (config('can.uses.timestamps')) {
                     $table->timestamps();
@@ -37,10 +41,10 @@ return new class extends Migration
     }
 
     /**
-     * Откатить миграцию
+     * Откатить миграцию.
      */
     public function down(): void
     {
-        Schema::connection(config('can.connection'))->dropIfExists(config('can.tables.permissionables'));
+        Schema::dropIfExists($this->table);
     }
 };

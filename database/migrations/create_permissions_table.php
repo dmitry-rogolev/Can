@@ -5,30 +5,45 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Таблица разрешений
+ * Таблица разрешений.
  */
 return new class extends Migration
 {
     /**
-     * Запустить миграцию
+     * Имя таблицы.
+     */
+    protected string $table;
+
+    /**
+     * Имя первичного ключа.
+     */
+    protected string $keyName;
+
+    /**
+     * Имя slug'а.
+     */
+    protected string $slugName;
+
+    public function __construct()
+    {
+        $this->table = config('can.tables.permissions');
+        $this->keyName = config('can.primary_key');
+        $this->slugName = app(config('can.models.permission'))->getSlugName();
+    }
+
+    /**
+     * Запустить миграцию.
      */
     public function up(): void
     {
-        $table = config('can.tables.permissions');
-        $connection = config('can.connection');
+        $exists = Schema::hasTable($this->table);
 
-        if (! Schema::connection($connection)->hasTable($table)) {
-            Schema::connection($connection)->create($table, function (Blueprint $table) {
-                if (config('can.uses.uuid')) {
-                    $table->uuid(config('can.primary_key'));
-                } else {
-                    $table->id();
-                }
-
-                $table->string('name', 255)->unique();
-                $table->string('slug', 255)->unique();
+        if (! $exists) {
+            Schema::create($this->table, function (Blueprint $table) {
+                config('can.uses.uuid') ? $table->uuid($this->keyName) : $table->id($this->keyName);
+                $table->string('name', 255);
+                $table->string($this->slugName, 255)->unique();
                 $table->text('description')->nullable();
-                $table->string('model', 255)->nullable();
 
                 if (config('can.uses.timestamps')) {
                     $table->timestamps();
@@ -42,10 +57,10 @@ return new class extends Migration
     }
 
     /**
-     * Откатить миграцию
+     * Откатить миграцию.
      */
     public function down(): void
     {
-        Schema::connection(config('can.connection'))->dropIfExists(config('can.tables.permissions'));
+        Schema::dropIfExists($this->table);
     }
 };
