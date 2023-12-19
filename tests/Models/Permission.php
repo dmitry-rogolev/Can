@@ -1,6 +1,6 @@
 <?php
 
-namespace dmitryrogolev\Can\Tests;
+namespace dmitryrogolev\Can\Tests\Models;
 
 use dmitryrogolev\Can\Models\Permission as Model;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 class Permission extends Model
 {
     /**
-     * Разрешение относится к множеству пользователей
+     * Разрешение относится к множеству пользователей.
      */
     public function users(): MorphToMany
     {

@@ -19,9 +19,9 @@
     <env name="CAN_TABLES_PERMISSIONABLES" value="permissionables" />
     <env name="CAN_RELATIONS_PERMISSIONABLE" value="permissionable" />
     <env name="CAN_PRIMARY_KEY" value="id" />
-    <env name="CAN_MODELS_PERMISSION" value="dmitryrogolev\Can\Tests\Permission" />
+    <env name="CAN_MODELS_PERMISSION" value="dmitryrogolev\Can\Tests\Models\Permission" />
     <env name="CAN_MODELS_PERMISSIONABLE" value="dmitryrogolev\Can\Models\Permissionable" />
-    <env name="CAN_MODELS_USER" value="dmitryrogolev\Can\Tests\User" />
+    <env name="CAN_MODELS_USER" value="dmitryrogolev\Can\Tests\Models\User" />
     <env name="CAN_FACTORIES_PERMISSION" value="dmitryrogolev\Can\Database\Factories\PermissionFactory" />
     <env name="CAN_SEEDERS_PERMISSION" value="dmitryrogolev\Can\Database\Seeders\PermissionSeeder" />
     <env name="CAN_SEPARATOR" value="." />
