@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Tests\Feature;
 
@@ -8,10 +8,8 @@ class MiddlewaresTest extends TestCase
 {
     /**
      * Проверяем возможность работы с маршрутами
-     *
-     * @return void
      */
-    public function test_welcome(): void 
+    public function test_welcome(): void
     {
         $response = $this->get('welcome');
 
@@ -20,10 +18,8 @@ class MiddlewaresTest extends TestCase
 
     /**
      * Проверяем аутентицикацию пользователя
-     *
-     * @return void
      */
-    public function test_profile(): void 
+    public function test_profile(): void
     {
         $user = config('can.models.user')::factory()->create();
 
@@ -34,10 +30,8 @@ class MiddlewaresTest extends TestCase
 
     /**
      * Проверяем наличие разрешения
-     *
-     * @return void
      */
-    public function test_has_permission(): void 
+    public function test_has_permission(): void
     {
         // Пользователь имеет необходимое разрешение
         $user = config('can.models.user')::factory()->create();

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Промежуточная таблица полиморфного отношения многие-ко-многим.
- * 
+ *
  * @link https://clck.ru/36JLPn Полиморфные отношения многие-ко-многим
  */
 return new class extends Migration

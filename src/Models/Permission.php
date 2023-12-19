@@ -14,12 +14,12 @@ if (config('can.uses.uuid') && config('can.uses.soft_deletes')) {
     {
         use HasUuids, SoftDeletes;
     }
-} else if (config('can.uses.uuid')) {
+} elseif (config('can.uses.uuid')) {
     class Permission extends Model
     {
         use HasUuids;
     }
-} else if (config('can.uses.soft_deletes')) {
+} elseif (config('can.uses.soft_deletes')) {
     class Permission extends Model
     {
         use SoftDeletes;
@@ -27,6 +27,5 @@ if (config('can.uses.uuid') && config('can.uses.soft_deletes')) {
 } else {
     class Permission extends Model
     {
-        
     }
 }

@@ -1,40 +1,32 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Services;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
-class PermissionService extends Service 
+class PermissionService extends Service
 {
     /**
      * Возвращает все разрешения
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function index(): Collection 
+    public function index(): Collection
     {
         return config('can.models.permission')::all();
     }
 
     /**
      * Возвращает разрешение по его идентификатору, slug'у или модели
-     *
-     * @param mixed $id
-     * @return \Illuminate\Database\Eloquent\Model|null
      */
-    public function show(mixed $id): Model|null 
+    public function show(mixed $id): ?Model
     {
         return $this->getPermission($id);
     }
 
     /**
      * Создает разрешение
-     *
-     * @param array $attributes
-     * @return \Illuminate\Database\Eloquent\Model
      */
-    public function store(array $attributes = []): Model 
+    public function store(array $attributes = []): Model
     {
         return empty($attributes) ? config('can.models.permission')::factory()->create() : config('can.models.permission')::create($attributes);
     }
@@ -42,11 +34,9 @@ class PermissionService extends Service
     /**
      * Обновляет модель
      *
-     * @param \Illuminate\Database\Eloquent\Model $model
-     * @param array $attributes
-     * @return \Illuminate\Database\Eloquent\Model
+     * @param  \Illuminate\Database\Eloquent\Model  $model
      */
-    public function update($model, array $attributes): Model 
+    public function update($model, array $attributes): Model
     {
         $model->fill($attributes);
         $model->save();
@@ -57,20 +47,17 @@ class PermissionService extends Service
     /**
      * Удаляет модель
      *
-     * @param \Illuminate\Database\Eloquent\Model $model
-     * @return bool|null
+     * @param  \Illuminate\Database\Eloquent\Model  $model
      */
-    public function delete($model): bool|null
+    public function delete($model): ?bool
     {
         return $model->delete();
     }
 
     /**
      * Очищает таблицу ролей
-     *
-     * @return void
      */
-    public function truncate(): void 
+    public function truncate(): void
     {
         config('can.models.permission')::truncate();
     }
@@ -78,10 +65,9 @@ class PermissionService extends Service
     /**
      * Удаляет модель
      *
-     * @param \Illuminate\Database\Eloquent\Model $model
-     * @return bool|null
+     * @param  \Illuminate\Database\Eloquent\Model  $model
      */
-    public function forceDelete($model): bool|null
+    public function forceDelete($model): ?bool
     {
         return $model->forceDelete();
     }
@@ -89,10 +75,9 @@ class PermissionService extends Service
     /**
      * Востанавливает модель
      *
-     * @param \Illuminate\Database\Eloquent\Model $model
-     * @return bool
+     * @param  \Illuminate\Database\Eloquent\Model  $model
      */
-    public function restore($model): bool 
+    public function restore($model): bool
     {
         return $model->restore();
     }
@@ -100,10 +85,9 @@ class PermissionService extends Service
     /**
      * Получить разрешение по его идентификатору или slug'у.
      *
-     * @param mixed $role
-     * @return \Illuminate\Database\Eloquent\Model|null
+     * @param  mixed  $role
      */
-    protected function getPermission($permission): Model|null 
+    protected function getPermission($permission): ?Model
     {
         if (is_int($permission) || is_string($permission)) {
             return config('can.models.permission')::where(app(config('can.models.permission'))->getKeyName(), $permission)->orWhere('slug', $permission)->first();

@@ -9,14 +9,14 @@ class PermissionFactory extends Factory
     /**
      * Создаем фабрику и указываем имя модели.
      *
-     * @param mixed ...$parameters
+     * @param  mixed  ...$parameters
      */
-    public function __construct(...$parameters) 
+    public function __construct(...$parameters)
     {
         parent::__construct(...$parameters);
         $this->model = config('can.models.permission');
     }
-    
+
     /**
      * Устанавливает состояние модели по умолчанию.
      *
@@ -27,9 +27,9 @@ class PermissionFactory extends Factory
         $name = fake()->unique()->name();
 
         return [
-            'name' => $name, 
-            'slug' => $name, 
-            'description' => $name.' permission', 
+            'name' => $name,
+            'slug' => $name,
+            'description' => $name.' permission',
         ];
     }
 }

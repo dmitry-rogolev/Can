@@ -15,7 +15,6 @@
     <env name="QUEUE_DRIVER" value="sync"/>
     <env name="DB_FOREIGN_KEYS" value="true" />
     
-    <env name="CAN_CONNECTION" value="" />
     <env name="CAN_TABLES_PERMISSIONS" value="permissions" />
     <env name="CAN_TABLES_PERMISSIONABLES" value="permissionables" />
     <env name="CAN_RELATIONS_PERMISSIONABLE" value="permissionable" />

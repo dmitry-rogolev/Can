@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Tests\Feature;
 
@@ -17,34 +17,28 @@ class PermissionServiceTest extends TestCase
 
     /**
      * Проверяем получение всех разрешений
-     *
-     * @return void
      */
-    public function test_index(): void 
+    public function test_index(): void
     {
         $this->assertCount(config('can.models.permission')::all()->count(), $this->service->index());
     }
 
     /**
      * Проверяем получение разрешения
-     *
-     * @return void
      */
-    public function test_show(): void 
+    public function test_show(): void
     {
         $this->assertTrue(config('can.models.permission')::canViewUsers()->is($this->service->show('view.users')));
     }
 
     /**
      * Проверяем возможность создания разрешения
-     * 
-     * @return void
      */
-    public function test_store(): void 
+    public function test_store(): void
     {
         $permission = $this->service->store([
-            'name' => 'Permission', 
-            'slug' => 'permission', 
+            'name' => 'Permission',
+            'slug' => 'permission',
         ]);
         $this->assertModelExists($permission);
 
@@ -54,28 +48,24 @@ class PermissionServiceTest extends TestCase
 
     /**
      * Проверяем возможность обновления разрешения
-     *
-     * @return void
      */
-    public function test_update(): void 
+    public function test_update(): void
     {
         $permission = $this->service->store([
-            'name' => 'Permission', 
-            'slug' => 'permission', 
-            'model' => 'Permission'
+            'name' => 'Permission',
+            'slug' => 'permission',
+            'model' => 'Permission',
         ]);
         $this->service->update($permission, [
-            'model' => 'User', 
+            'model' => 'User',
         ]);
         $this->assertNotEquals('Permission', $permission->model);
     }
 
     /**
      * Проверяем возможность удаления
-     *
-     * @return void
      */
-    public function test_delete(): void 
+    public function test_delete(): void
     {
         $permission = $this->service->store();
         $permission->delete();
@@ -89,10 +79,8 @@ class PermissionServiceTest extends TestCase
 
     /**
      * Проверяем возможность удаления
-     *
-     * @return void
      */
-    public function test_force_delete(): void 
+    public function test_force_delete(): void
     {
         $permission = $this->service->store();
         $permission->forceDelete();
@@ -101,10 +89,8 @@ class PermissionServiceTest extends TestCase
 
     /**
      * Проверяем возможность восстановления
-     *
-     * @return void
      */
-    public function test_restore(): void 
+    public function test_restore(): void
     {
         if (! config('can.uses.soft_deletes')) {
             $this->markTestSkipped('Программное удаление отключено.');
@@ -119,10 +105,8 @@ class PermissionServiceTest extends TestCase
 
     /**
      * Проверяем возможность очищения таблицы.
-     *
-     * @return void
      */
-    public function test_trancate(): void 
+    public function test_trancate(): void
     {
         config('can.models.permission')::factory()->count(10)->create();
         $this->service->truncate();

@@ -12,8 +12,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            \dmitryrogolev\Can\Database\Seeders\PermissionSeeder::class, 
-            \dmitryrogolev\Can\Tests\Seeders\UserSeeder::class, 
+            \dmitryrogolev\Can\Database\Seeders\PermissionSeeder::class,
+            \dmitryrogolev\Can\Tests\Seeders\UserSeeder::class,
         ]);
     }
 }

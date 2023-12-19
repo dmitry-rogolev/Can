@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Traits;
 
@@ -7,12 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Str;
 
-trait BaseHasPermissions 
+trait BaseHasPermissions
 {
     /**
      * Модель относится к множеству разрешений
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\MorphToMany
      */
     public function permissions(): MorphToMany
     {
@@ -23,21 +21,18 @@ trait BaseHasPermissions
 
     /**
      * Подгружает разрешения
-     * 
-     * @return static
      */
-    public function loadPermissions(): static 
+    public function loadPermissions(): static
     {
         return $this->load('permissions');
     }
 
     /**
      * Присоединить разрешения
-     * 
+     *
      * Можно передавать идентификатор, slug или модель разрешения.
-     * 
-     * @param mixed ...$permission
-     * @return bool
+     *
+     * @param  mixed  ...$permission
      */
     public function attachPermission(...$permission): bool
     {
@@ -60,12 +55,11 @@ trait BaseHasPermissions
 
     /**
      * Отсоединить разрешения
-     * 
+     *
      * Можно передавать идентификатор, slug или модель разрешения.
      * Если ничего не передовать, то будут отсоединены все отношения.
-     * 
-     * @param mixed ...$permission
-     * @return bool
+     *
+     * @param  mixed  ...$permission
      */
     public function detachPermission(...$permission): bool
     {
@@ -91,11 +85,9 @@ trait BaseHasPermissions
     }
 
     /**
-     * Отсоединить все разрешения 
-     *
-     * @return boolean
+     * Отсоединить все разрешения
      */
-    public function detachAllPermissions(): bool 
+    public function detachAllPermissions(): bool
     {
         if ($this->permissions->isNotEmpty()) {
             $this->permissions()->detach();
@@ -113,10 +105,9 @@ trait BaseHasPermissions
     /**
      * Синхронизирует разрешения
      *
-     * @param mixed ...$permissions
-     * @return void
+     * @param  mixed  ...$permissions
      */
-    public function syncPermissions(...$permissions): void 
+    public function syncPermissions(...$permissions): void
     {
         $this->detachAllPermissions();
         $this->attachPermission($permissions);
@@ -125,10 +116,9 @@ trait BaseHasPermissions
     /**
      * Проверяем наличие хотябы одного разрешения
      *
-     * @param array ...$permission
-     * @return boolean
+     * @param  array  ...$permission
      */
-    public function hasOnePermission(...$permission): bool 
+    public function hasOnePermission(...$permission): bool
     {
         $permissions = Helper::arrayFrom($permission);
 
@@ -144,10 +134,9 @@ trait BaseHasPermissions
     /**
      * Проверяем наличие всех разрешений
      *
-     * @param array ...$permission
-     * @return boolean
+     * @param  array  ...$permission
      */
-    public function hasAllPermissions(...$permission): bool 
+    public function hasAllPermissions(...$permission): bool
     {
         $permissions = Helper::arrayFrom($permission);
 
@@ -161,32 +150,28 @@ trait BaseHasPermissions
     }
 
     /**
-     * Проверяем наличие хотябы одного разрешения. 
-     * 
-     * Если передать второй параметр, проверяет наличие всех разрешений.
+     * Проверяем наличие хотябы одного разрешения.
      *
-     * @param mixed $permission
-     * @param boolean $all
-     * @return boolean
+     * Если передать второй параметр, проверяет наличие всех разрешений.
      */
-    public function hasPermission(mixed $permission, bool $all = false): bool 
+    public function hasPermission(mixed $permission, bool $all = false): bool
     {
         return $all ? $this->hasAllPermissions($permission) : $this->hasOnePermission($permission);
     }
 
     /**
      * Проверяем наличие разрешения
-     * 
-     * Например, canCreateUsers(), canUpdatePermissions() 
      *
-     * @param string $method
-     * @param array $parameters
+     * Например, canCreateUsers(), canUpdatePermissions()
+     *
+     * @param  string  $method
+     * @param  array  $parameters
      * @return mixed
      */
-    public function __call($method, $parameters) 
+    public function __call($method, $parameters)
     {
         try {
-            return parent::__call($method, $parameters); 
+            return parent::__call($method, $parameters);
         } catch (\BadMethodCallException $e) {
             if (is_bool($can = $this->callMagicCanPermission($method))) {
                 return $can;
@@ -198,14 +183,13 @@ trait BaseHasPermissions
 
     /**
      * Проверяем наличие разрешения
-     * 
-     * Например, canCreateUsers(), canUpdatePermissions() 
      *
-     * @param string $method
-     * @param array $parameters
-     * @return bool|null
+     * Например, canCreateUsers(), canUpdatePermissions()
+     *
+     * @param  string  $method
+     * @param  array  $parameters
      */
-    protected function callMagicCanPermission($method): bool|null
+    protected function callMagicCanPermission($method): ?bool
     {
         if (str_starts_with($method, 'can')) {
             return $this->hasPermission(Helper::slug(Str::after($method, 'can')));
@@ -217,21 +201,19 @@ trait BaseHasPermissions
     /**
      * Проверяем наличие разрешения
      *
-     * @param mixed $role
-     * @return boolean
+     * @param  mixed  $role
      */
-    protected function checkPermission(mixed $permission): bool 
+    protected function checkPermission(mixed $permission): bool
     {
         return $this->permissions->contains(fn ($item) => $item->getKey() == $permission || $item->slug == $permission || $permission instanceof (config('can.models.permission')) && $item->is($permission));
-    } 
+    }
 
     /**
      * Получить разрешение по его идентификатору или slug'у.
      *
-     * @param mixed $role
-     * @return \Illuminate\Database\Eloquent\Model|null
+     * @param  mixed  $role
      */
-    protected function getPermission($permission): Model|null 
+    protected function getPermission($permission): ?Model
     {
         if (is_int($permission) || is_string($permission)) {
             return config('can.models.permission')::where(app(config('can.models.permission'))->getKeyName(), $permission)->orWhere('slug', $permission)->first();

@@ -10,12 +10,12 @@ if (config('can.uses.uuid') && config('can.uses.soft_deletes')) {
     {
         use HasUuids, SoftDeletes;
     }
-} else if (config('can.uses.uuid')) {
+} elseif (config('can.uses.uuid')) {
     class User extends BaseUser
     {
         use HasUuids;
     }
-} else if (config('can.uses.soft_deletes')) {
+} elseif (config('can.uses.soft_deletes')) {
     class User extends BaseUser
     {
         use SoftDeletes;
@@ -23,6 +23,5 @@ if (config('can.uses.uuid') && config('can.uses.soft_deletes')) {
 } else {
     class User extends BaseUser
     {
-        
     }
 }

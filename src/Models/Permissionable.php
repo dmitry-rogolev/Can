@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Models;
 
@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Relations\MorphPivot;
 
 /**
  * Промежуточная модель полиморфного отношения многие-ко-многим.
- * 
+ *
  * @link https://clck.ru/36JLPn Полиморфные отношения многие-ко-многим
  */
 class Permissionable extends MorphPivot

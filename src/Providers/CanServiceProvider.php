@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Providers;
 
@@ -10,15 +10,11 @@ class CanServiceProvider extends ServiceProvider
 {
     /**
      * Имя тега пакета
-     *
-     * @var string
      */
     private string $packageTag = 'can';
 
     /**
      * Регистрация любых служб пакета.
-     * 
-     * @return void
      */
     public function register(): void
     {
@@ -41,20 +37,16 @@ class CanServiceProvider extends ServiceProvider
 
     /**
      * Объединяем конфигурацию пакета с конфигурацией приложения
-     *
-     * @return void
      */
-    private function mergeConfig(): void 
+    private function mergeConfig(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../../config/can.php', 'can');
     }
 
     /**
      * Регистируем миграции пакета.
-     *
-     * @return void
      */
-    private function loadMigrations(): void 
+    private function loadMigrations(): void
     {
         if (config('can.uses.migrations')) {
             $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
@@ -63,36 +55,32 @@ class CanServiceProvider extends ServiceProvider
 
     /**
      * Публикуем файлы пакета
-     *
-     * @return void
      */
-    private function publishFiles(): void 
+    private function publishFiles(): void
     {
         $this->publishes([
-            __DIR__.'/../../config/can.php' => config_path('can.php'), 
+            __DIR__.'/../../config/can.php' => config_path('can.php'),
         ], $this->packageTag.'-config');
 
         $this->publishes([
-            __DIR__.'/../../database/migrations' => database_path('migrations'), 
+            __DIR__.'/../../database/migrations' => database_path('migrations'),
         ], $this->packageTag.'-migrations');
 
         $this->publishes([
-            __DIR__.'/../../database/seeders/publish' => database_path('seeders'), 
+            __DIR__.'/../../database/seeders/publish' => database_path('seeders'),
         ], $this->packageTag.'-seeders');
 
         $this->publishes([
-            __DIR__.'/../../config/can.php' => config_path('can.php'), 
-            __DIR__.'/../../database/migrations' => database_path('migrations'), 
-            __DIR__.'/../../database/seeders/publish' => database_path('seeders'), 
+            __DIR__.'/../../config/can.php' => config_path('can.php'),
+            __DIR__.'/../../database/migrations' => database_path('migrations'),
+            __DIR__.'/../../database/seeders/publish' => database_path('seeders'),
         ], $this->packageTag);
     }
 
     /**
      * Регистрируем сидеры
-     *
-     * @return void
      */
-    private function loadSeedsFrom(): void 
+    private function loadSeedsFrom(): void
     {
         if (config('can.uses.seeders')) {
             $this->app->afterResolving('seed.handler', function ($handler) {
@@ -103,10 +91,8 @@ class CanServiceProvider extends ServiceProvider
 
     /**
      * Регистрируем директивы Blade
-     *
-     * @return void
      */
-    private function registerBladeExtensions(): void 
+    private function registerBladeExtensions(): void
     {
         if (config('can.uses.blade')) {
             $blade = $this->app['view']->getEngineResolver()->resolve('blade')->getCompiler();
@@ -128,15 +114,13 @@ class CanServiceProvider extends ServiceProvider
     }
 
     /**
-     * Регистрируем комманды 
-     *
-     * @return void
+     * Регистрируем комманды
      */
-    private function registerCommands(): void 
+    private function registerCommands(): void
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                InstallCommand::class, 
+                InstallCommand::class,
             ]);
         }
     }

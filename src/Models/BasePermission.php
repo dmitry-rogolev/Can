@@ -1,22 +1,22 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Models;
 
 use dmitryrogolev\Can\Contracts\PermissionHasRelations as ContractPermissionHasRelations;
 use dmitryrogolev\Can\Traits\PermissionHasRelations;
 use dmitryrogolev\Can\Traits\Sluggable;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-class BasePermission extends Model implements ContractPermissionHasRelations 
+class BasePermission extends Model implements ContractPermissionHasRelations
 {
-    use HasFactory, Sluggable, PermissionHasRelations;
+    use HasFactory, PermissionHasRelations, Sluggable;
 
     protected $fillable = [
-        'name', 
-        'slug', 
-        'description', 
-        'model', 
+        'name',
+        'slug',
+        'description',
+        'model',
     ];
 
     public function __construct(array $attributes = [])
@@ -31,12 +31,12 @@ class BasePermission extends Model implements ContractPermissionHasRelations
 
     /**
      * Возвращаем разрешение по его slug
-     * 
-     * Например, Permission::canCreateUser(), 
+     *
+     * Например, Permission::canCreateUser(),
      * Permission::canDeletePermission(), Permission::canUpdateUser()
      *
-     * @param string $method
-     * @param array $parameters
+     * @param  string  $method
+     * @param  array  $parameters
      * @return mixed
      */
     public static function __callStatic($method, $parameters)

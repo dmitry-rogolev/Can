@@ -1,10 +1,10 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Tests;
 
 use dmitryrogolev\Can\Providers\CanServiceProvider;
 
-class TestCase extends \Orchestra\Testbench\TestCase 
+class TestCase extends \Orchestra\Testbench\TestCase
 {
     use RefreshDatabase;
 
@@ -17,7 +17,7 @@ class TestCase extends \Orchestra\Testbench\TestCase
     protected function getPackageProviders($app): array
     {
         return [
-            CanServiceProvider::class, 
+            CanServiceProvider::class,
         ];
     }
 

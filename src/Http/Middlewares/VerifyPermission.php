@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Http\Middlewares;
 
@@ -6,17 +6,12 @@ use dmitryrogolev\Can\Contracts\Permissionable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Http\Request;
 
-class VerifyPermission 
+class VerifyPermission
 {
-    /**
-     * @var \Illuminate\Contracts\Auth\Guard
-     */
     protected Guard $auth;
 
     /**
      * Create a new filter instance.
-     *
-     * @param \Illuminate\Contracts\Auth\Guard $auth
      */
     public function __construct(Guard $auth)
     {
@@ -26,20 +21,16 @@ class VerifyPermission
     /**
      * Handle an incoming request.
      *
-     * @param \Illuminate\Http\Request $request
-     * @param \Closure $next
-     * @param int|string $permission
-     *
-     * @return mixed
+     * @param  int|string  $permission
      */
-    public function handle(Request $request, \Closure $next, ...$permission): mixed 
+    public function handle(Request $request, \Closure $next, ...$permission): mixed
     {
-        $permission = join(',', $permission);
+        $permission = implode(',', $permission);
 
         if ($this->auth->check() && $this->auth->user() instanceof Permissionable && $this->auth->user()->hasPermission($permission)) {
             return $next($request);
         }
 
-        abort(403, sprintf("Доступ запрещен. Нет требуемого разрешения \"%s\".", $permission));
+        abort(403, sprintf('Доступ запрещен. Нет требуемого разрешения "%s".', $permission));
     }
 }

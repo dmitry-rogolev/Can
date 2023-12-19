@@ -1,18 +1,16 @@
-<?php 
+<?php
 
 namespace dmitryrogolev\Can\Tests\Feature;
 
 use dmitryrogolev\Can\Tests\TestCase;
 use Illuminate\Support\Facades\Gate;
 
-class HasPermissionsTest extends TestCase 
+class HasPermissionsTest extends TestCase
 {
     /**
      * Проверяем получение разрешений
-     *
-     * @return void
      */
-    public function test_get_permissions(): void 
+    public function test_get_permissions(): void
     {
         $user = config('can.models.permission')::canCreateUsers()->users()->first();
 
@@ -21,10 +19,8 @@ class HasPermissionsTest extends TestCase
 
     /**
      * Присоединяем разрешение к пользователю
-     *
-     * @return void
      */
-    public function test_attach_permission(): void 
+    public function test_attach_permission(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -68,10 +64,8 @@ class HasPermissionsTest extends TestCase
 
     /**
      * Отсоединяем разрешение
-     *
-     * @return void
      */
-    public function test_detach_permission(): void 
+    public function test_detach_permission(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -108,10 +102,8 @@ class HasPermissionsTest extends TestCase
 
     /**
      * Отсоединяем все разрешения
-     * 
-     * @return void
      */
-    public function test_detach_all_permissions(): void 
+    public function test_detach_all_permissions(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -120,15 +112,13 @@ class HasPermissionsTest extends TestCase
         if (! config('can.uses.load_on_update')) {
             $user->loadPermissions();
         }
-        $this->assertTrue($user->permissions->isEmpty());      
+        $this->assertTrue($user->permissions->isEmpty());
     }
 
     /**
      * Синхронизируем разрешения
-     *
-     * @return void
      */
-    public function test_sync_permissions(): void 
+    public function test_sync_permissions(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -147,10 +137,8 @@ class HasPermissionsTest extends TestCase
 
     /**
      * Проверяем наличие хотябы одного разрешения
-     *
-     * @return void
      */
-    public function test_has_one_permission(): void 
+    public function test_has_one_permission(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -160,15 +148,13 @@ class HasPermissionsTest extends TestCase
         $this->assertTrue($user->hasOnePermission($permissions->get(1)->slug));
         $this->assertTrue($user->hasOnePermission($permissions));
         $this->assertTrue($user->hasOnePermission([$permissions->get(0)->getKey(), $permissions->get(1)->getKey()]));
-        $this->assertTrue($user->hasOnePermission($permissions->get(0)->slug . '|' . $permissions->get(1)->slug));
+        $this->assertTrue($user->hasOnePermission($permissions->get(0)->slug.'|'.$permissions->get(1)->slug));
     }
 
     /**
      * Проверяем наличие всех разрешений
-     *
-     * @return void
      */
-    public function test_has_all_permissions(): void 
+    public function test_has_all_permissions(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -181,10 +167,8 @@ class HasPermissionsTest extends TestCase
 
     /**
      * Проверяем наличие разрешения
-     *
-     * @return void
      */
-    public function test_has_permission(): void 
+    public function test_has_permission(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -196,10 +180,8 @@ class HasPermissionsTest extends TestCase
 
     /**
      * Проверяем возможность получения разрешения с помощью магического метода
-     *
-     * @return void
      */
-    public function test_magic_can(): void 
+    public function test_magic_can(): void
     {
         $user = config('can.models.user')::factory()->create();
         $permissions = config('can.models.permission')::all();
@@ -216,10 +198,8 @@ class HasPermissionsTest extends TestCase
 
     /**
      * Тестируем расширение метода can
-     *
-     * @return void
      */
-    public function test_can(): void 
+    public function test_can(): void
     {
         if (! config('can.uses.extend_can_method')) {
             $this->markTestSkipped('Метод can не расширен.');

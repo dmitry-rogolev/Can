@@ -31,17 +31,17 @@ class InstallCommand extends Command
     public function handle()
     {
         $tag = 'can';
-        
+
         if ($this->option('config')) {
             $tag .= '-config';
-        } else if ($this->option('migrations')) {
+        } elseif ($this->option('migrations')) {
             $tag .= '-migrations';
-        } else if ($this->option('seeders')) {
+        } elseif ($this->option('seeders')) {
             $tag .= '-seeders';
-        } 
-        
+        }
+
         $this->call('vendor:publish', [
-            '--tag' => $tag, 
+            '--tag' => $tag,
         ]);
     }
 }
