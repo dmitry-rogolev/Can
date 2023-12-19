@@ -24,7 +24,7 @@ trait RefreshDatabase
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(
-            __DIR__.'/migrations'
+            __DIR__.'/database/migrations'
         );
     }
 }

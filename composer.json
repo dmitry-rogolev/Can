@@ -37,7 +37,8 @@
     "autoload-dev": {
         "psr-4": {
             "dmitryrogolev\\Can\\Tests\\": "tests/", 
-            "dmitryrogolev\\Can\\Tests\\Seeders\\": "tests/seeders/"
+            "dmitryrogolev\\Can\\Tests\\Seeders\\": "tests/seeders/", 
+            "dmitryrogolev\\Can\\Tests\\Database\\Factories\\": "tests/database/factories/"
         }
     },
     "extra": {

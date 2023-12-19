@@ -1,27 +1,37 @@
 <?php
 
-namespace dmitryrogolev\Can\Tests\Migrations;
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Таблица пользователей.
+ */
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Имя таблицы.
+     */
+    protected string $table;
+
+    public function __construct()
+    {
+        $this->table = app(config('can.models.user'))->getTable();
+    }
+
+    /**
+     * Запустить миграцию.
      */
     public function up(): void
     {
-        $connection = config('can.connection');
-        $table = app(config('can.models.user'))->getTable();
+        $exists = Schema::hasTable($this->table);
 
-        if (! Schema::connection($connection)->hasTable($table)) {
-            Schema::connection($connection)->create($table, function (Blueprint $table) {
+        if (! $exists) {
+            Schema::create($this->table, function (Blueprint $table) {
                 if (config('can.uses.uuid')) {
                     $table->uuid(config('can.primary_key'));
                 } else {
-                    $table->id();
+                    $table->id(config('can.primary_key'));
                 }
 
                 $table->string('name');
@@ -42,10 +52,10 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * Откатить миграцию.
      */
     public function down(): void
     {
-        Schema::connection(config('can.connection'))->dropIfExists(app(config('can.models.user'))->getTable());
+        Schema::dropIfExists($this->table);
     }
 };
