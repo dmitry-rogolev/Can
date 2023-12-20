@@ -4,6 +4,7 @@ namespace dmitryrogolev\Can\Traits;
 
 use BadMethodCallException;
 use dmitryrogolev\Can\Facades\Can;
+use Illuminate\Contracts\Auth\Access\Authorizable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
@@ -27,7 +28,7 @@ trait HasPermissions
 
     /**
      * Возвращает коллекцию разрешений.
-     * 
+     *
      * @return \Illuminate\Database\Eloquent\Collection<int, \Illuminate\Database\Eloquent\Model>
      */
     public function getPermissions(): Collection
@@ -216,7 +217,7 @@ trait HasPermissions
      */
     public function can(mixed $abilities, mixed $arguments = [])
     {
-        if (config('can.uses.extend_can_method') && $permissions = $this->parsePermissions($abilities) && ! empty($permissions)) {
+        if (config('can.uses.extend_can_method') && $permissions = $this->parsePermissions($abilities)) {
             $all = is_bool($arguments) ? $arguments : false;
 
             return $this->hasPermission($permissions, $all);
@@ -263,7 +264,7 @@ trait HasPermissions
      */
     protected function checkPermission(Model $permission): bool
     {
-        return $this->roles->contains(fn ($item) => $item->is($permission));
+        return $this->permissions->contains(fn ($item) => $item->is($permission));
     }
 
     /**
@@ -402,7 +403,7 @@ trait HasPermissions
     {
         return $this->modelsToIds(
             $this->attachedFilter(
-                $this->parseRoles($permissions)
+                $this->parsePermissions($permissions)
             )
         );
     }

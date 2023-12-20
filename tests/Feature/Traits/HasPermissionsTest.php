@@ -7,6 +7,7 @@ use dmitryrogolev\Can\Tests\RefreshDatabase;
 use dmitryrogolev\Can\Tests\TestCase;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Тестируем функционал разрешений.
@@ -30,6 +31,11 @@ class HasPermissionsTest extends TestCase
      */
     protected string $keyName;
 
+    /**
+     * Имя slug'а.
+     */
+    protected string $slugName;
+
     public function setUp(): void
     {
         parent::setUp();
@@ -37,6 +43,7 @@ class HasPermissionsTest extends TestCase
         $this->model = config('can.models.permission');
         $this->user = config('can.models.user');
         $this->keyName = config('can.primary_key');
+        $this->slugName = app(config('can.models.permission'))->getSlugName();
     }
 
     /**
@@ -57,9 +64,9 @@ class HasPermissionsTest extends TestCase
         $query = $user->permissions();
         $this->assertInstanceOf(MorphToMany::class, $query);
 
-// ! ||--------------------------------------------------------------------------------||
-// ! ||                    Подтверждаем получение разрешений модели.                   ||
-// ! ||--------------------------------------------------------------------------------||
+        // ! ||--------------------------------------------------------------------------------||
+        // ! ||                    Подтверждаем получение разрешений модели.                   ||
+        // ! ||--------------------------------------------------------------------------------||
 
         $actual = $user->permissions()->get()->pluck($this->keyName)->all();
         $this->assertEquals($expected, $actual);
@@ -89,59 +96,37 @@ class HasPermissionsTest extends TestCase
     public function test_get_permissions(): void
     {
         $user = $this->generate($this->user);
-        $level1 = $this->generate($this->model, ['level' => 1]);
-        $level2 = $this->generate($this->model, ['level' => 2]);
-        $this->generate($this->model, ['level' => 3]);
-        $user->permissions()->attach($level2);
+        $permissions = $this->generate($this->model, 3);
+        $permissions->each(fn ($item) => $user->permissions()->attach($item));
+        $expected = $permissions->pluck($this->keyName)->all();
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                         Подтверждаем возврат коллекции.                        ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = $user->getRoles();
+        $permissions = $user->getPermissions();
         $this->assertInstanceOf(Collection::class, $permissions);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||           Подтверждаем возврат разрешений при отключенной иерархии разрешений.           ||
+        // ! ||                         Подтверждаем возврат разрешений                        ||
         // ! ||--------------------------------------------------------------------------------||
 
-        config(['can.uses.levels' => false]);
-        $expected = [$level2->getKey()];
-        $actual = $user->getRoles()->pluck($this->keyName)->all();
+        $actual = $user->getPermissions()->pluck($this->keyName)->all();
         $this->assertEquals($expected, $actual);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||            Подтверждаем возврат разрешений при включенной иерархии разрешений.           ||
+        // ! ||                     Подтверждаем количество запросов к БД.                     ||
         // ! ||--------------------------------------------------------------------------------||
 
-        config(['can.uses.levels' => true]);
-        $expected = [$level1->getKey(), $level2->getKey()];
-        $actual = $user->getRoles()->pluck($this->keyName)->all();
-        $this->assertEquals($expected, $actual);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||      Подтверждаем количество запросов к БД при отключенной иерархии разрешений.     ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        config(['can.uses.levels' => false]);
         $this->resetQueryExecutedCount();
-        $user->getRoles();
+        $user->getPermissions();
         $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||       Подтверждаем количество запросов к БД при включенной иерархии разрешений.      ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        config(['can.uses.levels' => true]);
-        $this->resetQueryExecutedCount();
-        $user->getRoles();
-        $this->assertQueryExecutedCount(1);
     }
 
     /**
-     * Есть ли метод, подгружающий отношение модели с ролями?
+     * Есть ли метод, подгружающий отношение модели с разрешениями?
      */
-    public function test_load_roles(): void
+    public function test_load_permissions(): void
     {
         $user = $this->generate($this->user);
         $permission = $this->generate($this->model);
@@ -160,418 +145,16 @@ class HasPermissionsTest extends TestCase
         // ! ||                     Подтверждаем, что отношение обновлено.                     ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $user->loadRoles();
+        $user->loadPermissions();
         $condition = $user->permissions->isEmpty();
         $this->assertTrue($condition);
     }
 
     /**
-     * Есть ли метод, присоединяющий роль к модели?
+     * Есть ли метод, присоединяющий разрешение к модели?
      */
-    public function test_attach_role_use_levels_with_one_param(): void
+    public function test_attach_permission_with_one_param(): void
     {
-        config(['can.uses.levels' => true]);
-        config(['can.uses.load_on_update' => true]);
-        $user = $this->generate($this->user);
-        $minLevel = 3;
-        $level = 2;
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                   Подтверждаем возврат логического значения.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => ++$level])->getKey();
-        $condition = $user->attachRole($permission);
-        $this->assertIsBool($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                             Передаем идентификатор.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => ++$level])->getKey();
-        $condition = $user->attachRole($permission);
-        $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                                 Передаем slug.                                 ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => ++$level])->getSlug();
-        $condition = $user->attachRole($permission);
-        $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->getSlug() === $permission));
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                                Передаем модель.                                ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => ++$level]);
-        $condition = $user->attachRole($permission);
-        $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->can($permission)));
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Повторно передаем присоединенную роль.                     ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $condition = $user->attachRole($permission);
-        $this->assertFalse($condition);
-        $permissions = $user->permissions->where($this->keyName, $permission->getKey());
-        $this->assertCount(1, $permissions);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||        Передаем роль с уровнем равным максимальному уровню пользователя.       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => $level]);
-        $condition = $user->attachRole($permission);
-        $this->assertFalse($condition);
-        $permissions = $user->permissions->where('level', $permission->level);
-        $this->assertCount(1, $permissions);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                  Передаем роль с меньшим уровнем относительно                  ||
-        // ! ||                       максимального уровня пользователя.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => $minLevel - 1]);
-        $condition = $user->attachRole($permission);
-        $this->assertFalse($condition);
-        $permissions = $user->permissions->where('level', $permission->level);
-        $this->assertCount(0, $permissions);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем отсутствующий в таблице slug.                     ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = 'my_slug';
-        $condition = $user->attachRole($permission);
-        $this->assertFalse($condition);
-        $this->assertFalse($user->permissions->contains(fn ($item) => $item->getSlug() === $permission));
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                 Передаем отсутствующий в таблице идентификатор.                ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = 634569569;
-        $condition = $user->attachRole($permission);
-        $this->assertFalse($condition);
-        $this->assertFalse($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||           при присоединении отсутствующей роли и при передачи модели.          ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => ++$level]);
-        $this->resetQueryExecutedCount();
-        $this->resetQueries();
-        $user->attachRole($permission);
-        $this->assertQueryExecutedCount(2);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||       при присоединении отсутствующей роли и при передачи идентификатора.      ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => ++$level])->getKey();
-        $this->resetQueryExecutedCount();
-        $user->attachRole($permission);
-        $this->assertQueryExecutedCount(3);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||               при присоединении существующей у пользователя роли               ||
-        // ! ||                             и при передачи модели.                             ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => $level]);
-        $this->resetQueryExecutedCount();
-        $user->attachRole($permission);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||               при присоединении существующей у пользователя роли               ||
-        // ! ||                         и при передачи идентификатора.                         ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => $level])->getKey();
-        $this->resetQueryExecutedCount();
-        $user->attachRole($permission);
-        $this->assertQueryExecutedCount(1);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Подтверждаем, что при отключении опции                     ||
-        // ! ||               авто обновления отношений, роли не были обновлены.               ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        config(['can.uses.load_on_update' => false]);
-        $permission = $this->generate($this->model, ['level' => ++$level])->getKey();
-        $condition = $user->attachRole($permission);
-        $this->assertTrue($condition);
-        $this->assertFalse($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
-        $user->loadRoles();
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
-    }
-
-    /**
-     * Есть ли метод, присоединяющий множество разрешений к модели?
-     */
-    public function test_attach_role_use_levels_with_many_params(): void
-    {
-        config(['can.uses.levels' => true]);
-        config(['can.uses.load_on_update' => true]);
-        $user = $this->generate($this->user);
-        $level = 2;
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                   Подтверждаем возврат логического значения.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $condition = $user->attachRole($permissions);
-        $this->assertIsBool($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем массив идентификаторов.                        ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $condition = $user->attachRole(...$permissions);
-        $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->getKey() === last($permissions)));
-        $this->assertTrue(
-            collect($permissions)->slice(0, count($permissions) - 1)->every(
-                fn ($permission) => ! $user->permissions->contains(
-                    fn ($item) => $item->getKey() === $permission
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                       Передаем коллекцию идентификаторов.                      ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = collect([
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ]);
-        $condition = $user->attachRole($permissions);
-        $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->getKey() === $permissions->last()));
-        $this->assertTrue(
-            $permissions->slice(0, $permissions->count() - 1)->every(
-                fn ($permission) => ! $user->permissions->contains(
-                    fn ($item) => $item->getKey() === $permission
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                            Передаем массив slug'ов.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-        ];
-        $condition = $user->attachRole(...$permissions);
-        $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->getSlug() === last($permissions)));
-        $this->assertTrue(
-            collect($permissions)->slice(0, count($permissions) - 1)->every(
-                fn ($permission) => ! $user->permissions->contains(
-                    fn ($item) => $item->getSlug() === $permission
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                            Передаем массив моделей.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $condition = $user->attachRole($permissions);
-        $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->can(last($permissions))));
-        $this->assertTrue(
-            collect($permissions)->slice(0, count($permissions) - 1)->every(
-                fn ($permission) => ! $user->permissions->contains(
-                    fn ($item) => $item->can($permission)
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                    Передаем массив уже присоединенных разрешений.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $condition = $user->attachRole(...$permissions);
-        $this->assertFalse($condition);
-        $this->assertTrue($user->permissions->where($this->keyName, last($permissions)->getKey())->count() === 1);
-        $this->assertTrue(
-            collect($permissions)->slice(0, count($permissions) - 1)->every(
-                fn ($permission) => ! $user->permissions->contains(
-                    fn ($item) => $item->can($permission)
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                       равны максимальному уровню модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level]),
-            $this->generate($this->model, ['level' => $level]),
-            $this->generate($this->model, ['level' => $level]),
-        ];
-        $condition = $user->attachRole($permissions);
-        $this->assertFalse($condition);
-        $this->assertTrue(
-            collect($permissions)->every(
-                fn ($permission) => $user->permissions->contains(
-                    fn ($item) => ! $item->can($permission)
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                        ниже максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-        ];
-        $condition = $user->attachRole($permissions);
-        $this->assertFalse($condition);
-        $this->assertTrue(
-            collect($permissions)->every(
-                fn ($permission) => $user->permissions->contains(
-                    fn ($item) => ! $item->can($permission)
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||            Передаем массив отсутствующих в таблице идентификаторов.            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [354345, '354546544765', '34342'];
-        $condition = $user->attachRole(...$permissions);
-        $this->assertFalse($condition);
-        $this->assertTrue(
-            collect($permissions)->every(
-                fn ($permission) => ! $user->permissions->contains(
-                    fn ($item) => $item->getKey() === $permission
-                )
-            )
-        );
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                      при передачи массива идентификаторов.                     ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->attachRole(...$permissions);
-        $this->assertQueryExecutedCount(3);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                          при передачи массива моделей.                         ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->attachRole($permissions);
-        $this->assertQueryExecutedCount(2);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||               при повторной передачи ранее присоединенных разрешений.               ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $this->resetQueryExecutedCount();
-        $user->attachRole($permissions);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                      при передачи массива разрешений с уровнем                      ||
-        // ! ||                        ниже максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->attachRole($permissions);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||           при передачи отсутствующих в таблице идентификаторов разрешений.          ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [354345, '354546544765', '34342'];
-        $this->resetQueryExecutedCount();
-        $condition = $user->attachRole(...$permissions);
-        $this->assertQueryExecutedCount(1);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||              при отключении подгрузки отношений после обновления.              ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        config(['can.uses.load_on_update' => false]);
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->attachRole(...$permissions);
-        $this->assertQueryExecutedCount(2);
-    }
-
-    /**
-     * Есть ли метод, присоединяющий роль к модели?
-     */
-    public function test_attach_role_without_levels_with_one_param(): void
-    {
-        config(['can.uses.levels' => false]);
         config(['can.uses.load_on_update' => true]);
         $user = $this->generate($this->user);
 
@@ -580,7 +163,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model)->getKey();
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -588,7 +171,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model)->getKey();
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertTrue($condition);
         $this->assertTrue($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
 
@@ -597,7 +180,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model)->getSlug();
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertTrue($condition);
         $this->assertTrue($user->permissions->contains(fn ($item) => $item->getSlug() === $permission));
 
@@ -606,15 +189,15 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model);
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertTrue($condition);
-        $this->assertTrue($user->permissions->contains(fn ($item) => $item->can($permission)));
+        $this->assertTrue($user->permissions->contains(fn ($item) => $item->is($permission)));
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Повторно передаем присоединенную роль.                     ||
+        // ! ||               Повторно передаем присоединенное ранее разрешение.               ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertFalse($condition);
         $permissions = $user->permissions->where($this->keyName, $permission->getKey());
         $this->assertCount(1, $permissions);
@@ -624,7 +207,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = 'my_slug';
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertFalse($condition);
         $this->assertFalse($user->permissions->contains(fn ($item) => $item->getSlug() === $permission));
 
@@ -633,71 +216,68 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = 634569569;
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertFalse($condition);
         $this->assertFalse($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||       при присоединении отсутствующей роли и при передачи идентификатора.      ||
+        // ! ||      при присоединении не присоединенного ранее идентификатора разрешения.     ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model)->getKey();
         $this->resetQueryExecutedCount();
-        $user->attachRole($permission);
+        $user->attachPermission($permission);
         $this->assertQueryExecutedCount(3);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||           при присоединении отсутствующей роли и при передачи модели.          ||
+        // ! ||          при присоединении не присоединенной ранее модели разрешения.          ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model);
         $this->resetQueryExecutedCount();
         $this->resetQueries();
-        $user->attachRole($permission);
+        $user->attachPermission($permission);
         $this->assertQueryExecutedCount(2);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||               при присоединении существующей у пользователя роли               ||
-        // ! ||                             и при передачи модели.                             ||
+        // ! ||            при присоединении присоединенной ранее модели разрешения.           ||
         // ! ||--------------------------------------------------------------------------------||
 
         $this->resetQueryExecutedCount();
-        $user->attachRole($permission);
+        $user->attachPermission($permission);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||               при присоединении существующей у пользователя роли               ||
-        // ! ||                         и при передачи идентификатора.                         ||
+        // ! ||       при присоединении присоединенного ранее идентификатора разрешения.       ||
         // ! ||--------------------------------------------------------------------------------||
 
         $this->resetQueryExecutedCount();
-        $user->attachRole($permission->getKey());
+        $user->attachPermission($permission->getKey());
         $this->assertQueryExecutedCount(1);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                     Подтверждаем, что при отключении опции                     ||
-        // ! ||               авто обновления отношений, роли не были обновлены.               ||
+        // ! ||            авто обновления отношений, разрешения не были обновлены.            ||
         // ! ||--------------------------------------------------------------------------------||
 
         config(['can.uses.load_on_update' => false]);
         $permission = $this->generate($this->model)->getKey();
-        $condition = $user->attachRole($permission);
+        $condition = $user->attachPermission($permission);
         $this->assertTrue($condition);
         $this->assertFalse($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->assertTrue($user->permissions->contains(fn ($item) => $item->getKey() === $permission));
     }
 
     /**
      * Есть ли метод, присоединяющий множество разрешений к модели?
      */
-    public function test_attach_role_without_levels_with_many_params(): void
+    public function test_attach_permission_with_many_params(): void
     {
-        config(['can.uses.levels' => false]);
         config(['can.uses.load_on_update' => true]);
         $user = $this->generate($this->user);
 
@@ -705,24 +285,16 @@ class HasPermissionsTest extends TestCase
         // ! ||                   Подтверждаем возврат логического значения.                   ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = [
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-        ];
-        $condition = $user->attachRole($permissions);
+        $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
+        $condition = $user->attachPermission($permissions);
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                        Передаем массив идентификаторов.                        ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = [
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-        ];
-        $condition = $user->attachRole(...$permissions);
+        $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
+        $condition = $user->attachPermission(...$permissions);
         $this->assertTrue($condition);
         $this->assertTrue(
             collect($permissions)->every(
@@ -736,12 +308,8 @@ class HasPermissionsTest extends TestCase
         // ! ||                       Передаем коллекцию идентификаторов.                      ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = collect([
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-        ]);
-        $condition = $user->attachRole($permissions);
+        $permissions = $this->generate($this->model, 3)->pluck($this->keyName);
+        $condition = $user->attachPermission($permissions);
         $this->assertTrue($condition);
         $this->assertTrue(
             $permissions->every(
@@ -755,12 +323,8 @@ class HasPermissionsTest extends TestCase
         // ! ||                            Передаем массив slug'ов.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = [
-            $this->generate($this->model)->getSlug(),
-            $this->generate($this->model)->getSlug(),
-            $this->generate($this->model)->getSlug(),
-        ];
-        $condition = $user->attachRole(...$permissions);
+        $permissions = $this->generate($this->model, 3)->pluck($this->slugName)->all();
+        $condition = $user->attachPermission(...$permissions);
         $this->assertTrue($condition);
         $this->assertTrue(
             collect($permissions)->every(
@@ -774,26 +338,22 @@ class HasPermissionsTest extends TestCase
         // ! ||                            Передаем массив моделей.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = [
-            $this->generate($this->model),
-            $this->generate($this->model),
-            $this->generate($this->model),
-        ];
-        $condition = $user->attachRole($permissions);
+        $permissions = $this->generate($this->model, 3)->all();
+        $condition = $user->attachPermission($permissions);
         $this->assertTrue($condition);
         $this->assertTrue(
             collect($permissions)->every(
                 fn ($permission) => $user->permissions->contains(
-                    fn ($item) => $item->can($permission)
+                    fn ($item) => $item->is($permission)
                 )
             )
         );
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                    Передаем массив уже присоединенных разрешений.                   ||
+        // ! ||                 Передаем массив уже присоединенных разрешений.                 ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $condition = $user->attachRole(...$permissions);
+        $condition = $user->attachPermission(...$permissions);
         $this->assertFalse($condition);
         $this->assertTrue(
             collect($permissions)->every(
@@ -806,7 +366,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = [354345, '354546544765', '34342'];
-        $condition = $user->attachRole(...$permissions);
+        $condition = $user->attachPermission(...$permissions);
         $this->assertFalse($condition);
         $this->assertTrue(
             collect($permissions)->every(
@@ -821,13 +381,9 @@ class HasPermissionsTest extends TestCase
         // ! ||                      при передачи массива идентификаторов.                     ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = [
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-        ];
+        $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
         $this->resetQueryExecutedCount();
-        $user->attachRole(...$permissions);
+        $user->attachPermission(...$permissions);
         $this->assertQueryExecutedCount(5);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -835,32 +391,28 @@ class HasPermissionsTest extends TestCase
         // ! ||                          при передачи массива моделей.                         ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = [
-            $this->generate($this->model),
-            $this->generate($this->model),
-            $this->generate($this->model),
-        ];
+        $permissions = $this->generate($this->model, 3)->all();
         $this->resetQueryExecutedCount();
-        $user->attachRole($permissions);
+        $user->attachPermission($permissions);
         $this->assertQueryExecutedCount(4);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||               при повторной передачи ранее присоединенных разрешений.               ||
+        // ! ||             при повторной передачи ранее присоединенных разрешений.            ||
         // ! ||--------------------------------------------------------------------------------||
 
         $this->resetQueryExecutedCount();
-        $user->attachRole($permissions);
+        $user->attachPermission($permissions);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||           при передачи отсутствующих в таблице идентификаторов разрешений.          ||
+        // ! ||        при передачи отсутствующих в таблице идентификаторов разрешений.        ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = [354345, '354546544765', '34342'];
         $this->resetQueryExecutedCount();
-        $condition = $user->attachRole(...$permissions);
+        $condition = $user->attachPermission(...$permissions);
         $this->assertQueryExecutedCount(1);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -869,22 +421,17 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         config(['can.uses.load_on_update' => false]);
-        $permissions = [
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-            $this->generate($this->model)->getKey(),
-        ];
+        $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
         $this->resetQueryExecutedCount();
-        $user->attachRole(...$permissions);
+        $user->attachPermission(...$permissions);
         $this->assertQueryExecutedCount(4);
     }
 
     /**
-     * Есть ли метод, отсоединяющий роль?
+     * Есть ли метод, отсоединяющий разрешение?
      */
-    public function test_detach_role_with_one_param(): void
+    public function test_detach_permission_with_one_param(): void
     {
-        config(['can.uses.levels' => false]);
         config(['can.uses.load_on_update' => true]);
         $user = $this->generate($this->user);
 
@@ -894,8 +441,8 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->detachRole($permission);
+        $user->loadPermissions();
+        $condition = $user->detachPermission($permission);
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -904,8 +451,8 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model)->getKey();
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->detachRole($permission);
+        $user->loadPermissions();
+        $condition = $user->detachPermission($permission);
         $this->assertTrue($condition);
         $this->assertFalse(
             $user->permissions->contains(fn ($item) => $item->getKey() === $permission)
@@ -917,8 +464,8 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->detachRole($permission->getSlug());
+        $user->loadPermissions();
+        $condition = $user->detachPermission($permission->getSlug());
         $this->assertTrue($condition);
         $this->assertFalse(
             $user->permissions->contains(fn ($item) => $item->getSlug() === $permission->getSlug())
@@ -930,26 +477,26 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->detachRole($permission);
+        $user->loadPermissions();
+        $condition = $user->detachPermission($permission);
         $this->assertTrue($condition);
         $this->assertFalse(
-            $user->permissions->contains(fn ($item) => $item->can($permission))
+            $user->permissions->contains(fn ($item) => $item->is($permission))
         );
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                     Повторно передаем отсоединенную модель.                    ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $condition = $user->detachRole($permission);
+        $condition = $user->detachPermission($permission);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем не присоединенную роль.                        ||
+        // ! ||                        Передаем не присоединенную разрешение.                        ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model);
-        $condition = $user->detachRole($permission);
+        $condition = $user->detachPermission($permission);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -957,7 +504,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = 4564564564;
-        $condition = $user->detachRole($permission);
+        $condition = $user->detachPermission($permission);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -966,25 +513,10 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->detachRole();
+        $user->loadPermissions();
+        $condition = $user->detachPermission();
         $this->assertTrue($condition);
         $this->assertTrue($user->permissions->isEmpty());
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||               Передаем роль, которая фактически не присоединена,               ||
-        // ! ||             но присутствует у модели при включении иерархии разрешений.             ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        config(['can.uses.levels' => true]);
-        $user->permissions()->detach();
-        $level1 = $this->generate($this->model, ['level' => 1]);
-        $level2 = $this->generate($this->model, ['level' => 2]);
-        $user->permissions()->attach($level2);
-        $user->loadRoles();
-        $condition = $user->detachRole($level1);
-        $this->assertFalse($condition);
-        config(['can.uses.levels' => false]);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
@@ -993,9 +525,9 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model)->getKey();
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->detachRole($permission);
+        $user->detachPermission($permission);
         $this->assertQueryExecutedCount(3);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1005,9 +537,9 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->detachRole($permission);
+        $user->detachPermission($permission);
         $this->assertQueryExecutedCount(2);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1017,7 +549,7 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $this->resetQueryExecutedCount();
-        $user->detachRole($permission);
+        $user->detachPermission($permission);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1028,19 +560,18 @@ class HasPermissionsTest extends TestCase
         config(['can.uses.load_on_update' => false]);
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->detachRole($permission);
+        $user->detachPermission($permission);
         $this->assertQueryExecutedCount(1);
     }
 
     /**
      * Есть ли метод, отсоединяющий множество разрешений?
      */
-    public function test_detach_role_with_many_params(): void
+    public function test_detach_permission_with_many_params(): void
     {
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
         $user = $this->generate($this->user);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1049,8 +580,8 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
         $user->permissions()->attach($permissions);
-        $user->loadRoles();
-        $condition = $user->detachRole($permissions);
+        $user->loadPermissions();
+        $condition = $user->detachPermission($permissions);
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1059,8 +590,8 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
         $user->permissions()->attach($permissions);
-        $user->loadRoles();
-        $condition = $user->detachRole(...$permissions);
+        $user->loadPermissions();
+        $condition = $user->detachPermission(...$permissions);
         $this->assertTrue($condition);
         $this->assertTrue(
             collect($permissions)->every(
@@ -1074,8 +605,8 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
         $user->permissions()->attach($permissions);
-        $user->loadRoles();
-        $condition = $user->detachRole(collect($permissions));
+        $user->loadPermissions();
+        $condition = $user->detachPermission(collect($permissions));
         $this->assertTrue($condition);
         $this->assertTrue(
             collect($permissions)->every(
@@ -1087,14 +618,13 @@ class HasPermissionsTest extends TestCase
         // ! ||                            Передаем массив slug'ов.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $slugName = app($this->model)->getSlugName();
         $permissions = $this->generate($this->model, 3);
         $user->permissions()->attach($permissions->pluck($this->keyName)->all());
-        $user->loadRoles();
-        $condition = $user->detachRole(...$permissions->pluck($slugName)->all());
+        $user->loadPermissions();
+        $condition = $user->detachPermission(...$permissions->pluck($this->slugName)->all());
         $this->assertTrue($condition);
         $this->assertTrue(
-            $permissions->pluck($slugName)->every(
+            $permissions->pluck($this->slugName)->every(
                 fn ($permission) => ! $user->permissions->contains(fn ($item) => $item->getSlug() === $permission)
             )
         );
@@ -1105,21 +635,21 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3);
         $user->permissions()->attach($permissions->pluck($this->keyName)->all());
-        $user->loadRoles();
-        $condition = $user->detachRole($permissions->all());
+        $user->loadPermissions();
+        $condition = $user->detachPermission($permissions->all());
         $this->assertTrue($condition);
         $this->assertTrue(
             $permissions->every(
-                fn ($permission) => ! $user->permissions->contains(fn ($item) => $item->can($permission))
+                fn ($permission) => ! $user->permissions->contains(fn ($item) => $item->is($permission))
             )
         );
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                    Передаем массив не присоединенных разрешений.                    ||
+        // ! ||                  Передаем массив не присоединенных разрешений.                 ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
-        $condition = $user->detachRole(...$permissions);
+        $condition = $user->detachPermission(...$permissions);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1127,22 +657,8 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = [485475, '45646', 'sjfldlg'];
-        $condition = $user->detachRole($permissions);
+        $condition = $user->detachPermission($permissions);
         $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||       Передаем массив разрешений с уровнями ниже максимального уровня модели.       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        config(['can.uses.levels' => true]);
-        $level1 = $this->generate($this->model, ['level' => 1]);
-        $level2 = $this->generate($this->model, ['level' => 2]);
-        $level3 = $this->generate($this->model, ['level' => 3]);
-        $user->permissions()->attach($level3);
-        $user->loadRoles();
-        $condition = $user->detachRole($level1, $level2);
-        $this->assertFalse($condition);
-        config(['can.uses.levels' => false]);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
@@ -1151,9 +667,9 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
         $user->permissions()->attach($permissions);
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->detachRole($permissions);
+        $user->detachPermission($permissions);
         $this->assertQueryExecutedCount(5);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1163,19 +679,19 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3);
         $user->permissions()->attach($permissions->pluck($this->keyName)->all());
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->detachRole($permissions->all());
+        $user->detachPermission($permissions->all());
         $this->assertQueryExecutedCount(4);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                  при передачи массива не присоединенных разрешений.                 ||
+        // ! ||               при передачи массива не присоединенных разрешений.               ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3)->all();
         $this->resetQueryExecutedCount();
-        $user->detachRole($permissions);
+        $user->detachPermission($permissions);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1186,19 +702,18 @@ class HasPermissionsTest extends TestCase
         config(['can.uses.load_on_update' => false]);
         $permissions = $this->generate($this->model, 3);
         $user->permissions()->attach($permissions->pluck($this->keyName)->all());
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->detachRole($permissions->all());
+        $user->detachPermission($permissions->all());
         $this->assertQueryExecutedCount(3);
     }
 
     /**
-     * Есть ли метод, отсоединяющий все роли?
+     * Есть ли метод, отсоединяющий все разрешения?
      */
-    public function test_detach_all_roles(): void
+    public function test_detach_all_permissions(): void
     {
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
         $user = $this->generate($this->user);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1206,44 +721,45 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
-        $condition = $user->detachAllRoles();
+        $user->attachPermission($permissions);
+        $condition = $user->detachAllPermissions();
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                              Отсоединяем все роли.                             ||
+        // ! ||                              Отсоединяем все разрешения.                             ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
-        $condition = $user->detachAllRoles();
+        $user->attachPermission($permissions);
+        $condition = $user->detachAllPermissions();
         $this->assertTrue($condition);
         $this->assertEmpty($user->permissions);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                         Повторно отсоединяем все роли.                         ||
+        // ! ||                         Повторно отсоединяем все разрешения.                         ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $condition = $user->detachAllRoles();
+        $condition = $user->detachAllPermissions();
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||      Подтверждаем количество выполненных запросов к БД при наличии разрешений.      ||
+        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
+        // ! ||                             при наличии разрешений.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
+        $user->attachPermission($permissions);
         $this->resetQueryExecutedCount();
-        $user->detachAllRoles();
+        $user->detachAllPermissions();
         $this->assertQueryExecutedCount(2);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                              при отсутствии разрешений.                             ||
+        // ! ||                           при отсутствии разрешений.                           ||
         // ! ||--------------------------------------------------------------------------------||
 
         $this->resetQueryExecutedCount();
-        $user->detachAllRoles();
+        $user->detachAllPermissions();
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1253,20 +769,19 @@ class HasPermissionsTest extends TestCase
 
         config(['can.uses.load_on_update' => false]);
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
-        $user->loadRoles();
+        $user->attachPermission($permissions);
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->detachAllRoles();
+        $user->detachAllPermissions();
         $this->assertQueryExecutedCount(1);
     }
 
     /**
-     * Есть ли метод, синхронизирующий роли?
+     * Есть ли метод, синхронизирующий разрешения?
      */
-    public function test_sync_roles(): void
+    public function test_sync_permissions(): void
     {
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
         $user = $this->generate($this->user);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1275,7 +790,7 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $expected = [$permission->getKey()];
-        $user->syncRoles($permission->getKey());
+        $user->syncPermissions($permission->getKey());
         $actual = $user->permissions->pluck($this->keyName)->all();
         $this->assertEquals($expected, $actual);
 
@@ -1285,7 +800,7 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $expected = [$permission->getKey()];
-        $user->syncRoles($permission);
+        $user->syncPermissions($permission);
         $actual = $user->permissions->pluck($this->keyName)->all();
         $this->assertEquals($expected, $actual);
 
@@ -1295,7 +810,7 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3);
         $expected = $permissions->pluck($this->keyName)->all();
-        $user->syncRoles($expected);
+        $user->syncPermissions($expected);
         $actual = $user->permissions->pluck($this->keyName)->all();
         $this->assertEquals($expected, $actual);
 
@@ -1305,7 +820,7 @@ class HasPermissionsTest extends TestCase
 
         $permissions = $this->generate($this->model, 3);
         $expected = $permissions->pluck($this->keyName)->all();
-        $user->syncRoles($permissions);
+        $user->syncPermissions($permissions);
         $actual = $user->permissions->pluck($this->keyName)->all();
         $this->assertEquals($expected, $actual);
 
@@ -1314,94 +829,74 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = [34543, '3453453434', 'sdfgdsg'];
-        $user->syncRoles($permissions);
+        $user->syncPermissions($permissions);
         $this->assertEmpty($user->permissions);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||               Подтверждаем количество выполненных запросов к БД.               ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $user->attachRole($this->generate($this->model, 3));
+        $user->attachPermission($this->generate($this->model, 3));
         $permissions = $this->generate($this->model, 3);
         $this->resetQueryExecutedCount();
-        $user->syncRoles($permissions);
+        $user->syncPermissions($permissions);
         $this->assertQueryExecutedCount(6);
     }
 
     /**
-     * Есть ли метод, проверяющий наличие роли?
+     * Есть ли метод, проверяющий наличие разрешения у модели?
      */
-    public function test_has_one_role_use_levels_with_one_param(): void
+    public function test_has_one_permission_with_one_param(): void
     {
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => true]);
         $user = $this->generate($this->user);
-        $level = 2;
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                   Подтверждаем возврат логического значения.                   ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => ++$level]);
+        $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission);
+        $user->loadPermissions();
+        $condition = $user->hasPermission($permission);
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                             Передаем идентификатор.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => ++$level])->getKey();
+        $permission = $this->generate($this->model)->getKey();
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission);
+        $user->loadPermissions();
+        $condition = $user->hasPermission($permission);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                                 Передаем slug.                                 ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => ++$level]);
+        $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission->getSlug());
+        $user->loadPermissions();
+        $condition = $user->hasPermission($permission->getSlug());
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                                Передаем модель.                                ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => ++$level]);
+        $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission);
+        $user->loadPermissions();
+        $condition = $user->hasPermission($permission);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||         Передаем роль, равную по уровню с максимальным уровнем модели.         ||
+        // ! ||                   Передаем отсутствующее у модели разрешение.                  ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => $level]);
-        $condition = $user->hasRole($permission);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем роль, меньшую по уровню                        ||
-        // ! ||                    относительно максимального уровня модели.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => $level - 1]);
-        $condition = $user->hasRole($permission);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем роль, большую по уровню                        ||
-        // ! ||                    относительно максимального уровня модели.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model, ['level' => $level + 1]);
-        $condition = $user->hasRole($permission);
+        $permission = $this->generate($this->model);
+        $condition = $user->hasPermission($permission);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1409,39 +904,39 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = 384563459;
-        $condition = $user->hasRole($permission);
+        $condition = $user->hasPermission($permission);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||       Подтверждаем количество запросов к БД при передаче идентификатора.       ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => ++$level])->getKey();
+        $permission = $this->generate($this->model)->getKey();
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->hasRole($permission);
+        $user->hasPermission($permission);
         $this->assertQueryExecutedCount(1);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||           Подтверждаем количество запросов к БД при передаче модели.           ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => ++$level]);
+        $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $this->resetQueryExecutedCount();
-        $user->hasRole($permission);
+        $user->hasPermission($permission);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||            Подтверждаем количество запросов к БД при передаче роли,            ||
-        // ! ||        имеющую уровень меньший относительно максимального уровня модели.       ||
+        // ! ||                      Подтверждаем количество запросов к БД                     ||
+        // ! ||                при передачи отсутствующего у модели разрешения.                ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permission = $this->generate($this->model, ['level' => $level - 1]);
+        $permission = $this->generate($this->model);
         $this->resetQueryExecutedCount();
-        $user->hasRole($permission);
+        $user->hasPermission($permission);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1451,318 +946,16 @@ class HasPermissionsTest extends TestCase
 
         $permission = 384563459;
         $this->resetQueryExecutedCount();
-        $condition = $user->hasRole($permission);
+        $condition = $user->hasPermission($permission);
         $this->assertQueryExecutedCount(1);
     }
 
     /**
-     * Есть ли метод, проверяющий наличие роли у модели?
+     * Есть ли метод, проверяющий наличие хотябы одного разрешения из переданных.
      */
-    public function test_has_one_role_without_levels_with_one_param(): void
+    public function test_has_one_permission_with_many_params(): void
     {
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
-        $user = $this->generate($this->user);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                   Подтверждаем возврат логического значения.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model);
-        $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission);
-        $this->assertIsBool($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                             Передаем идентификатор.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model)->getKey();
-        $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                                 Передаем slug.                                 ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model);
-        $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission->getSlug());
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                                Передаем модель.                                ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model);
-        $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $condition = $user->hasRole($permission);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                      Передаем отсутствующую у модели роль.                     ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model);
-        $condition = $user->hasRole($permission);
-        $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                 Передаем отсутствующий в таблице идентификатор.                ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = 384563459;
-        $condition = $user->hasRole($permission);
-        $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||       Подтверждаем количество запросов к БД при передаче идентификатора.       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model)->getKey();
-        $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permission);
-        $this->assertQueryExecutedCount(1);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||           Подтверждаем количество запросов к БД при передаче модели.           ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model);
-        $user->permissions()->attach($permission);
-        $user->loadRoles();
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permission);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                      Подтверждаем количество запросов к БД                     ||
-        // ! ||                    при передачи отсутствующей у модели роли.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $this->generate($this->model);
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permission);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                      Подтверждаем количество запросов к БД                     ||
-        // ! ||              при передаче отсутствующего в таблице идентификатора.             ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = 384563459;
-        $this->resetQueryExecutedCount();
-        $condition = $user->hasRole($permission);
-        $this->assertQueryExecutedCount(1);
-    }
-
-    /**
-     * Есть ли метод, проверяющий наличие хотябы одной роли из переданных.
-     */
-    public function test_has_one_role_with_levels_with_many_params(): void
-    {
-        config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => true]);
-        $user = $this->generate($this->user);
-        $level = 2;
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                   Подтверждаем возврат логического значения.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
-        $this->assertIsBool($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем массив идентификаторов.                        ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                            Передаем массив slug'ов.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                            Передаем массив моделей.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                       равны максимальному уровню модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level]),
-            $this->generate($this->model, ['level' => $level]),
-            $this->generate($this->model, ['level' => $level]),
-        ];
-        $condition = $user->hasRole($permissions);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                       меньше максимального уровня модели.                      ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-        ];
-        $condition = $user->hasRole($permissions);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                        выше максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-        ];
-        $condition = $user->hasRole($permissions);
-        $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||            Передаем массив отсутствующих в таблице идентификаторов.            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [354354, '3456457', 'dfgdgf'];
-        $condition = $user->hasRole($permissions);
-        $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем массив смешанных данных.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            'dskjghkjdsgf',
-            $this->generate($this->model, ['level' => $level + 1])->getKey(),
-            $this->generate($this->model, ['level' => $level], false),
-            $this->generate($this->model, ['level' => $level - 1])->getSlug(),
-        ];
-        $condition = $user->hasRole($permissions);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                      при передаче массива идентификаторов.                     ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $user->attachRole($permissions);
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
-        $this->assertQueryExecutedCount(1);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                          при передаче массива моделей.                         ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $user->attachRole($permissions);
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                  при передаче массива разрешений, у которых уровни                  ||
-        // ! ||                        ниже максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                  при передаче массива разрешений, у которых уровни                  ||
-        // ! ||                        выше максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||          при передаче массива отсутствующих в таблице идентификаторов.         ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [6345437, '3454646', 'dsfgdsgsdgf'];
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
-        $this->assertQueryExecutedCount(1);
-    }
-
-    /**
-     * Есть ли метод, проверяющий наличие хотябы одной роли из переданных.
-     */
-    public function test_has_one_role_without_levels_with_many_params(): void
-    {
-        config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
         $user = $this->generate($this->user);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1770,8 +963,8 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions);
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1779,18 +972,18 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                            Передаем массив slug'ов.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $slugName = app($this->model)->getSlugName();
-        $permissions = $this->generate($this->model, 3)->pluck($slugName);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
+        $this->slugName = app($this->model)->getSlugName();
+        $permissions = $this->generate($this->model, 3)->pluck($this->slugName);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1798,16 +991,16 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Передаем массив не присоединенных к модели разрешений.               ||
+        // ! ||             Передаем массив не присоединенных к модели разрешений.             ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $condition = $user->hasRole($permissions);
+        $condition = $user->hasPermission($permissions);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1815,7 +1008,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = [354354, '3456457', 'dfgdgf'];
-        $condition = $user->hasRole($permissions);
+        $condition = $user->hasPermission($permissions);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1829,7 +1022,7 @@ class HasPermissionsTest extends TestCase
             $this->generate($this->model)->getSlug(),
             $user->permissions->first(),
         ];
-        $condition = $user->hasRole($permissions);
+        $condition = $user->hasPermission($permissions);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1838,9 +1031,9 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
-        $user->attachRole($permissions);
+        $user->attachPermission($permissions);
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
+        $user->hasPermission($permissions);
         $this->assertQueryExecutedCount(1);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1849,19 +1042,19 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
+        $user->attachPermission($permissions);
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
+        $user->hasPermission($permissions);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                 при передаче не присоединенных к модели разрешений.                 ||
+        // ! ||               при передаче не присоединенных к модели разрешений.              ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
+        $user->hasPermission($permissions);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -1871,210 +1064,16 @@ class HasPermissionsTest extends TestCase
 
         $permissions = [6345437, '3454646', 'dsfgdsgsdgf'];
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions);
-        $this->assertQueryExecutedCount(1);
-    }
-
-    /**
-     * Есть ли метод, проверяющий наличие всех переданных разрешений?
-     */
-    public function test_has_all_roles_use_levels(): void
-    {
-        config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => true]);
-        $user = $this->generate($this->user);
-        $level = 2;
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                   Подтверждаем возврат логического значения.                   ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
-        $this->assertIsBool($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем массив идентификаторов.                        ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                            Передаем массив slug'ов.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-            $this->generate($this->model, ['level' => ++$level])->getSlug(),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                            Передаем массив моделей.                            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                       равны максимальному уровню модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level]),
-            $this->generate($this->model, ['level' => $level]),
-            $this->generate($this->model, ['level' => $level]),
-        ];
-        $condition = $user->hasRole($permissions, true);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                       меньше максимального уровня модели.                      ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-        ];
-        $condition = $user->hasRole($permissions, true);
-        $this->assertTrue($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                     Передаем массив разрешений, у которых уровни                    ||
-        // ! ||                        выше максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-        ];
-        $condition = $user->hasRole($permissions, true);
-        $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||            Передаем массив отсутствующих в таблице идентификаторов.            ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [354354, '3456457', 'dfgdgf'];
-        $condition = $user->hasRole($permissions, true);
-        $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                        Передаем массив смешанных данных.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            'dskjghkjdsgf',
-            $this->generate($this->model, ['level' => $level + 1])->getKey(),
-            $this->generate($this->model, ['level' => $level], false),
-            $this->generate($this->model, ['level' => $level - 1])->getSlug(),
-        ];
-        $condition = $user->hasRole($permissions, true);
-        $this->assertFalse($condition);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                      при передаче массива идентификаторов.                     ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-            $this->generate($this->model, ['level' => ++$level])->getKey(),
-        ];
-        $user->attachRole($permissions);
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
-        $this->assertQueryExecutedCount(1);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                          при передаче массива моделей.                         ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-            $this->generate($this->model, ['level' => ++$level]),
-        ];
-        $user->attachRole($permissions);
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                  при передаче массива разрешений, у которых уровни                  ||
-        // ! ||                        ниже максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-            $this->generate($this->model, ['level' => $level - 1]),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                  при передаче массива разрешений, у которых уровни                  ||
-        // ! ||                        выше максимального уровня модели.                       ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-            $this->generate($this->model, ['level' => $level + 1]),
-        ];
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
-        $this->assertQueryExecutedCount(0);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||          при передаче массива отсутствующих в таблице идентификаторов.         ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permissions = [6345437, '3454646', 'dsfgdsgsdgf'];
-        $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
+        $user->hasPermission($permissions);
         $this->assertQueryExecutedCount(1);
     }
 
     /**
      * Есть ли метод, проверяющий наличие всех разрешений у модели?
      */
-    public function test_has_all_roles_without_levels(): void
+    public function test_has_all_permissions(): void
     {
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
         $user = $this->generate($this->user);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2082,8 +1081,8 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions, true);
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2091,18 +1090,17 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions, true);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                            Передаем массив slug'ов.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $slugName = app($this->model)->getSlugName();
-        $permissions = $this->generate($this->model, 3)->pluck($slugName);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
+        $permissions = $this->generate($this->model, 3)->pluck($this->slugName);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions, true);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2110,16 +1108,16 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
-        $condition = $user->hasRole($permissions, true);
+        $user->attachPermission($permissions);
+        $condition = $user->hasPermission($permissions, true);
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Передаем массив не присоединенных к модели разрешений.               ||
+        // ! ||             Передаем массив не присоединенных к модели разрешений.             ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $condition = $user->hasRole($permissions, true);
+        $condition = $user->hasPermission($permissions, true);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2127,7 +1125,7 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = [354354, '3456457', 'dfgdgf'];
-        $condition = $user->hasRole($permissions, true);
+        $condition = $user->hasPermission($permissions, true);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2141,7 +1139,7 @@ class HasPermissionsTest extends TestCase
             $this->generate($this->model)->getSlug(),
             $user->permissions->first(),
         ];
-        $condition = $user->hasRole($permissions, true);
+        $condition = $user->hasPermission($permissions, true);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2150,9 +1148,9 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3)->pluck($this->keyName)->all();
-        $user->attachRole($permissions);
+        $user->attachPermission($permissions);
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
+        $user->hasPermission($permissions, true);
         $this->assertQueryExecutedCount(1);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2161,19 +1159,19 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
-        $user->attachRole($permissions);
+        $user->attachPermission($permissions);
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
+        $user->hasPermission($permissions, true);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||                Подтверждаем количество выполненных запросов к БД               ||
-        // ! ||                 при передаче не присоединенных к модели разрешений.                 ||
+        // ! ||               при передаче не присоединенных к модели разрешений.              ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permissions = $this->generate($this->model, 3);
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
+        $user->hasPermission($permissions, true);
         $this->assertQueryExecutedCount(0);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2183,94 +1181,17 @@ class HasPermissionsTest extends TestCase
 
         $permissions = [6345437, '3454646', 'dsfgdsgsdgf'];
         $this->resetQueryExecutedCount();
-        $user->hasRole($permissions, true);
+        $user->hasPermission($permissions, true);
         $this->assertQueryExecutedCount(1);
-    }
-
-    /**
-     * Есть ли метод, возвращающий роль модели с максимальным уровнем доступа.
-     */
-    public function test_role(): void
-    {
-        config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => true]);
-        $user = $this->generate($this->user);
-        $level1 = $this->generate($this->model, ['level' => 1]);
-        $level2 = $this->generate($this->model, ['level' => 2]);
-        $level3 = $this->generate($this->model, ['level' => 3]);
-        $user->permissions()->attach($level2);
-        $user->loadRoles();
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                          Подтверждаем возврат модели.                          ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $user->permission();
-        $this->assertInstanceOf($this->model, $permission);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем возврат роли с максимальным уровнем.               ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $permission = $user->permission();
-        $this->assertTrue($level2->can($permission));
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                 Подтверждаем возврат null при отсутствии разрешений.                ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $user->permissions()->detach();
-        $user->loadRoles();
-        $permission = $user->permission();
-        $this->assertNull($permission);
-    }
-
-    /**
-     * Есть ли метод, возвращающий наибольший уровень присоединенных разрешений.
-     */
-    public function test_level(): void
-    {
-        config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => true]);
-        $user = $this->generate($this->user);
-        $level1 = $this->generate($this->model, ['level' => 1]);
-        $level2 = $this->generate($this->model, ['level' => 2]);
-        $level3 = $this->generate($this->model, ['level' => 3]);
-        $user->permissions()->attach($level2);
-        $user->loadRoles();
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                           Подтверждаем возврат числа.                          ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $level = $user->level();
-        $this->assertIsInt($level);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||                Подтверждаем возврат максимального уровня разрешений.                ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $level = $user->level();
-        $this->assertEquals($level2->level, $level);
-
-        // ! ||--------------------------------------------------------------------------------||
-        // ! ||         Подтверждаем возврат нуля при отсутствии присоединенных разрешений.         ||
-        // ! ||--------------------------------------------------------------------------------||
-
-        $user->permissions()->detach();
-        $user->loadRoles();
-        $level = $user->level();
-        $this->assertEquals(0, $user->level());
     }
 
     /**
      * Есть ли метод, проверяющий наличие разрешений?
      */
-    public function test_is(): void
+    public function test_can(): void
     {
-        config(['can.uses.extend_is_method' => true]);
+        config(['can.uses.extend_can_method' => true]);
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
         $user = $this->generate($this->user);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2279,7 +1200,7 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $condition = $user->can($permission);
         $this->assertIsBool($condition);
 
@@ -2289,7 +1210,7 @@ class HasPermissionsTest extends TestCase
 
         $permission = $this->generate($this->model);
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $condition = $user->can($permission);
         $this->assertTrue($condition);
 
@@ -2297,12 +1218,8 @@ class HasPermissionsTest extends TestCase
         // ! ||                            Передаем массив slug'ов.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = [
-            $this->generate($this->model)->getSlug(),
-            $this->generate($this->model)->getSlug(),
-            $this->generate($this->model)->getSlug(),
-        ];
-        $user->attachRole($permissions);
+        $permissions = $this->generate($this->model, 3)->pluck($this->slugName)->all();
+        $user->attachPermission($permissions);
         $condition = $user->can($permissions, true);
         $this->assertTrue($condition);
 
@@ -2310,17 +1227,13 @@ class HasPermissionsTest extends TestCase
         // ! ||                            Передаем массив моделей.                            ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $permissions = collect([
-            $this->generate($this->model),
-            $this->generate($this->model),
-            $this->generate($this->model),
-        ]);
-        $user->attachRole($permissions->slice(0, 2));
+        $permissions = $this->generate($this->model, 3);
+        $user->attachPermission($permissions->slice(0, 2));
         $condition = $user->can($permissions, true);
         $this->assertFalse($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                          Передаем отсутствующую роль.                          ||
+        // ! ||                       Передаем отсутствующее разрешение.                       ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model);
@@ -2331,28 +1244,28 @@ class HasPermissionsTest extends TestCase
         // ! ||                    Подтверждаем работу метода по умолчанию.                    ||
         // ! ||--------------------------------------------------------------------------------||
 
-        $condition = $user->can($user);
+        Gate::define('view.profile', fn () => true);
+        $condition = $user->can('view.profile');
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
         // ! ||       Подтверждаем работу метода по умолчанию при отключении расширения.       ||
         // ! ||--------------------------------------------------------------------------------||
 
-        config(['can.uses.extend_is_method' => false]);
-        $permission = $this->generate($this->model);
+        config(['can.uses.extend_can_method' => false]);
+        $permission = $this->generate($this->model)->getKey();
         $user->permissions()->attach($permission);
-        $user->loadRoles();
+        $user->loadPermissions();
         $condition = $user->can($permission);
         $this->assertFalse($condition);
     }
 
     /**
-     * Есть ли магический метод, проверяющий наличие роли по его slug'у?
+     * Есть ли магический метод, проверяющий наличие разрешения по его slug'у?
      */
-    public function test_call_magic_is_role(): void
+    public function test_call_magic_can_permission(): void
     {
         config(['can.uses.load_on_update' => true]);
-        config(['can.uses.levels' => false]);
         $user = $this->generate($this->user);
 
         // ! ||--------------------------------------------------------------------------------||
@@ -2360,23 +1273,23 @@ class HasPermissionsTest extends TestCase
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model);
-        $user->attachRole($permission);
+        $user->attachPermission($permission);
         $method = 'can'.ucfirst($permission->getSlug());
         $condition = $user->{$method}();
         $this->assertIsBool($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                           Подтверждаем наличие роли.                           ||
+        // ! ||                        Подтверждаем наличие разрешения.                        ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model);
-        $user->attachRole($permission);
+        $user->attachPermission($permission);
         $method = 'can'.ucfirst($permission->getSlug());
         $condition = $user->{$method}();
         $this->assertTrue($condition);
 
         // ! ||--------------------------------------------------------------------------------||
-        // ! ||                          Подтверждаем отсутствие роли.                         ||
+        // ! ||                       Подтверждаем отсутствие разрешения.                      ||
         // ! ||--------------------------------------------------------------------------------||
 
         $permission = $this->generate($this->model);

@@ -2,11 +2,11 @@
 
 namespace dmitryrogolev\Can\Tests\Feature\Services;
 
-use dmitryrogolev\Contracts\Resourcable;
 use dmitryrogolev\Can\Facades\Can;
 use dmitryrogolev\Can\Services\PermissionService;
 use dmitryrogolev\Can\Tests\RefreshDatabase;
 use dmitryrogolev\Can\Tests\TestCase;
+use dmitryrogolev\Contracts\Resourcable;
 
 /**
  * Тестируем сервис работы с таблицей ролей.

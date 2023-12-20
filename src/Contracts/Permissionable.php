@@ -17,7 +17,7 @@ interface Permissionable
 
     /**
      * Возвращает коллекцию разрешений.
-     * 
+     *
      * @return \Illuminate\Database\Eloquent\Collection<int, \Illuminate\Database\Eloquent\Model>
      */
     public function getPermissions(): Collection;

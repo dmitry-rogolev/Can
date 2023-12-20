@@ -19,8 +19,6 @@ class PermissionFactoryTest extends TestCase
 
     /**
      * Имя slug'а.
-     *
-     * @var string
      */
     protected string $slugName;
 

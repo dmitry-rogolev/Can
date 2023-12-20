@@ -20,8 +20,6 @@ class PermissionSeederTest extends TestCase
 
     /**
      * Имя slug'а.
-     *
-     * @var string
      */
     protected string $slugName;
 

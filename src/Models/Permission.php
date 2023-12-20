@@ -2,14 +2,14 @@
 
 namespace dmitryrogolev\Can\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use dmitryrogolev\Can\Contracts\PermissionHasRelations as ContractPermissionHasRelations;
 use dmitryrogolev\Can\Traits\PermissionHasRelations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use dmitryrogolev\Contracts\Sluggable;
 use dmitryrogolev\Traits\HasSlug;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
@@ -18,8 +18,8 @@ use Illuminate\Support\Str;
 abstract class BasePermission extends Model implements ContractPermissionHasRelations, Sluggable
 {
     use HasFactory;
-    use PermissionHasRelations;
     use HasSlug;
+    use PermissionHasRelations;
 
     /**
      * Атрибуты, для которых разрешено массовое присвоение значений.

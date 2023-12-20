@@ -3,8 +3,8 @@
 namespace dmitryrogolev\Can\Tests\Feature\Models;
 
 use dmitryrogolev\Can\Contracts\PermissionHasRelations;
-use dmitryrogolev\Contracts\Sluggable;
 use dmitryrogolev\Can\Tests\TestCase;
+use dmitryrogolev\Contracts\Sluggable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 

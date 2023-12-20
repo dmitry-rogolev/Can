@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use dmitryrogolev\Can\Facades\Can;
+use Illuminate\Database\Seeder;
 
 /**
  * Сидер модели разрешений.
