@@ -2,69 +2,92 @@
 
 namespace dmitryrogolev\Can\Contracts;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
+/**
+ * Функционал разрешений.
+ */
 interface Permissionable
 {
     /**
-     * Модель относится к множеству разрешений
+     * Модель относится к множеству разрешений.
      */
     public function permissions(): MorphToMany;
 
     /**
-     * Подгружает разрешения
+     * Возвращает коллекцию разрешений.
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection<int, \Illuminate\Database\Eloquent\Model>
+     */
+    public function getPermissions(): Collection;
+
+    /**
+     * Подгружает разрешения.
      */
     public function loadPermissions(): static;
 
     /**
-     * Присоединить разрешения
+     * Присоединяет разрешение(-я) к модели.
      *
-     * Можно передавать идентификатор, slug или модель разрешения.
-     *
-     * @param  mixed  ...$permission
+     * @param  \Illuminate\Contracts\Support\Arrayable|array|\Illuminate\Database\Eloquent\Model|string|int  ...$permission Идентификатор(-ы), slug(-и) или модель(-и) разрешения(-ий).
+     * @return bool Было ли присоединено хотябы одно разрешение?
      */
-    public function attachPermission(...$permission): bool;
+    public function attachPermission(mixed ...$permission): bool;
 
     /**
-     * Отсоединить разрешения
+     * Отсоединяет разрешение(-я).
      *
-     * Можно передавать идентификатор, slug или модель разрешения.
-     * Если ничего не передовать, то будут отсоединены все отношения.
-     *
-     * @param  mixed  ...$permission
+     * @param  \Illuminate\Contracts\Support\Arrayable|array|\Illuminate\Database\Eloquent\Model|string|int  ...$permission Идентификатор(-ы), slug(-и) или модель(-и) разрешения(-ий).
+     * @return bool Было ли отсоединено хотябы одно разрешение?
      */
-    public function detachPermission(...$permission): bool;
+    public function detachPermission(mixed ...$permission): bool;
 
     /**
-     * Отсоединить все разрешения
+     * Отсоединяет все разрешения.
+     *
+     * @return bool Были ли отсоединены разрешения?
      */
     public function detachAllPermissions(): bool;
 
     /**
-     * Синхронизирует разрешения
+     * Синхронизирует разрешения.
      *
-     * @param  mixed  ...$permissions
+     * @param  \Illuminate\Contracts\Support\Arrayable|array|\Illuminate\Database\Eloquent\Model|string|int  ...$permission Идентификатор(-ы), slug(-и) или модель(-и) разрешения(-ий).
      */
-    public function syncPermissions(...$permissions): void;
+    public function syncPermissions(mixed ...$permissions): void;
 
     /**
-     * Проверяем наличие хотябы одного разрешения
+     * Проверяет наличие хотябы одного разрешения из переданных.
      *
-     * @param  array  ...$permission
+     * @param  \Illuminate\Contracts\Support\Arrayable|array|\Illuminate\Database\Eloquent\Model|string|int  ...$permission Идентификатор(-ы), slug(-и) или модель(-и)  разрешения(-ий).
      */
-    public function hasOnePermission(...$permission): bool;
+    public function hasOnePermission(mixed ...$permission): bool;
 
     /**
-     * Проверяем наличие всех разрешений
+     * Проверяет наличие всех переданных разрешений.
      *
-     * @param  array  ...$permission
+     * @param  \Illuminate\Contracts\Support\Arrayable|array|\Illuminate\Database\Eloquent\Model|string|int  ...$permission Идентификатор(-ы), slug(-и) или модель(-и) разрешения(-ий).
      */
-    public function hasAllPermissions(...$permission): bool;
+    public function hasAllPermissions(mixed ...$permission): bool;
 
     /**
-     * Проверяем наличие хотябы одного разрешения.
+     * Проверяет наличие разрешения(-ий).
      *
-     * Если передать второй параметр, проверяет наличие всех разрешений.
+     * @param  \Illuminate\Contracts\Support\Arrayable|array|\Illuminate\Database\Eloquent\Model|string|int  $permission Идентификатор(-ы), slug(-и) или модель(-и) разрешения(-ий).
+     * @param  bool  $all Проверить наличие всех разрешений?
      */
     public function hasPermission(mixed $permission, bool $all = false): bool;
+
+    /**
+     * Определите, обладает ли объект данной способностью.
+     *
+     * Если передать идентификатор, slug или модель разрешения, то будет вызван метод hasPermission,
+     * проверяющий наличие разрешения у модели.
+     *
+     * @param  iterable|string  $abilities
+     * @param  array|mixed  $arguments
+     * @return bool
+     */
+    public function can(mixed $abilities, mixed $arguments = []);
 }

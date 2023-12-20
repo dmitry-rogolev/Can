@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 trait PermissionHasRelations
 {
     /**
-     * Возвращает модели, которые имеют данное разрешение
+     * Возвращает модели, которые имеют данное разрешение.
      *
-     * @param  string  $related Имя модели
+     * @param  string  $related Имя модели.
      */
     public function permissionables(string $related): MorphToMany
     {
