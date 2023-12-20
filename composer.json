@@ -32,7 +32,8 @@
     ],
     "require": {
         "laravel/framework": "^10.30",
-        "dmitryrogolev/slug": "^0.0.1"
+        "dmitryrogolev/slug": "^0.0.1",
+        "dmitryrogolev/service": "^0.0.1"
     },
     "require-dev": {
         "orchestra/testbench": "^8.14",
