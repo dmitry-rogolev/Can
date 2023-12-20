@@ -20,8 +20,19 @@
             "role": "Developer"
         }
     ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:dmitry-rogolev/Slug.git"
+        }, 
+        {
+            "type": "vcs",
+            "url": "git@github.com:dmitry-rogolev/Service.git"
+        }
+    ],
     "require": {
-        "laravel/framework": "^10.30"
+        "laravel/framework": "^10.30",
+        "dmitryrogolev/slug": "^0.0.1"
     },
     "require-dev": {
         "orchestra/testbench": "^8.14",

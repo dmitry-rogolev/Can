@@ -6,10 +6,13 @@ use dmitryrogolev\Can\Console\Commands\InstallCommand;
 use dmitryrogolev\Can\Http\Middlewares\VerifyPermission;
 use Illuminate\Support\ServiceProvider;
 
+/**
+ * Поставщик функционала разрешений для моделей.
+ */
 class CanServiceProvider extends ServiceProvider
 {
     /**
-     * Имя тега пакета
+     * Имя тега пакета.
      */
     private string $packageTag = 'can';
 
@@ -44,7 +47,7 @@ class CanServiceProvider extends ServiceProvider
     }
 
     /**
-     * Регистируем миграции пакета.
+     * Регистрируем миграции пакета.
      */
     private function loadMigrations(): void
     {
@@ -54,7 +57,7 @@ class CanServiceProvider extends ServiceProvider
     }
 
     /**
-     * Публикуем файлы пакета
+     * Публикуем файлы пакета.
      */
     private function publishFiles(): void
     {
@@ -78,7 +81,7 @@ class CanServiceProvider extends ServiceProvider
     }
 
     /**
-     * Регистрируем сидеры
+     * Регистрируем сидеры.
      */
     private function loadSeedsFrom(): void
     {
@@ -90,7 +93,7 @@ class CanServiceProvider extends ServiceProvider
     }
 
     /**
-     * Регистрируем директивы Blade
+     * Регистрируем директивы Blade.
      */
     private function registerBladeExtensions(): void
     {
@@ -114,7 +117,7 @@ class CanServiceProvider extends ServiceProvider
     }
 
     /**
-     * Регистрируем комманды
+     * Регистрируем команды.
      */
     private function registerCommands(): void
     {

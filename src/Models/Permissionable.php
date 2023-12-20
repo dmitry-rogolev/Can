@@ -15,8 +15,7 @@ class Permissionable extends MorphPivot
     {
         parent::__construct($attributes);
 
-        $this->connection = config('can.connection');
-        $this->table = config('can.tables.permissionables');
+        $this->setTable(config('can.tables.permissionables'));
         $this->timestamps = config('can.uses.timestamps');
     }
 }

@@ -4,6 +4,9 @@ namespace dmitryrogolev\Can\Console\Commands;
 
 use Illuminate\Console\Command;
 
+/**
+ * Команда установки пакета "Can", предоставляющего функционал разрешений.
+ */
 class InstallCommand extends Command
 {
     /**
