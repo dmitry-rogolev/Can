@@ -105,7 +105,7 @@ return [
          *
          * @link https://clck.ru/36JNiT UUID
          */
-        'uuid' => env('CAN_USES_UUID', true),
+        'uuid' => (bool) env('CAN_USES_UUID', true),
 
         /**
          * * Использовать ли программное удаление для моделей.
@@ -118,7 +118,7 @@ return [
          *
          * @link https://clck.ru/36JNnr Программное удаление моделей
          */
-        'soft_deletes' => env('CAN_USES_SOFT_DELETES', false),
+        'soft_deletes' => (bool) env('CAN_USES_SOFT_DELETES', false),
 
         /**
          * * Использовать ли временные метки для моделей.
@@ -130,7 +130,7 @@ return [
          *
          * @link https://clck.ru/36JNke Временные метки моделей
          */
-        'timestamps' => env('CAN_USES_TIMESTAMPS', true),
+        'timestamps' => (bool) env('CAN_USES_TIMESTAMPS', true),
 
         /**
          * * Использовать ли миграции по умолчанию.
@@ -138,14 +138,14 @@ return [
          * Если вы не публикуете или не создаете свои миграции таблиц для этого пакета,
          * то установите данный флаг в true.
          */
-        'migrations' => env('CAN_USES_MIGRATIONS', false),
+        'migrations' => (bool) env('CAN_USES_MIGRATIONS', false),
 
         /**
          * * Использовать ли сидеры по умолчанию.
          *
          * Если вы хотите использовать сидеры по умолчанию, установите данный флаг в true.
          */
-        'seeders' => env('CAN_USES_SEED', false),
+        'seeders' => (bool) env('CAN_USES_SEED', false),
 
         /**
          * * Регистрировать ли директивы blade (can, endcan, permission, endpermission).
@@ -157,7 +157,7 @@ return [
          *
          * @link https://clck.ru/36Ls42 Директивы Blade
          */
-        'blade' => env('CAN_USES_BLADE', true),
+        'blade' => (bool) env('CAN_USES_BLADE', true),
 
         /**
          * * Регистрировать ли посредники (can, permission).
@@ -169,7 +169,7 @@ return [
          *
          * @link https://clck.ru/36LsKF Посредники
          */
-        'middlewares' => env('CAN_USES_MIDDLEWARES', true),
+        'middlewares' => (bool) env('CAN_USES_MIDDLEWARES', true),
 
         /**
          * * Следует ли подгружать отношение модели после изменения.
@@ -182,7 +182,7 @@ return [
          * Если вы делаете много операций с разрешениями,
          * рекомендуется отключить данную функцию для увеличения производительности.
          */
-        'load_on_update' => env('CAN_USES_LOAD_ON_UPDATE', true),
+        'load_on_update' => (bool) env('CAN_USES_LOAD_ON_UPDATE', true),
 
         /**
          * * Следует ли расширять метод "can" интерфейса "Illuminate\Contracts\Auth\Access\Authorizable".
@@ -199,7 +199,7 @@ return [
          *
          * @link https://clck.ru/36SAPk Авторизация действий с помощью политик
          */
-        'extend_can_method' => env('CAN_USES_EXTEND_CAN_METHOD', true),
+        'extend_can_method' => (bool) env('CAN_USES_EXTEND_CAN_METHOD', true),
 
     ],
 ];
