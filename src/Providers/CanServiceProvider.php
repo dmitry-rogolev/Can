@@ -33,7 +33,6 @@ class CanServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (config('can.uses.middlewares')) {
-            $this->app['router']->aliasMiddleware('can', VerifyPermission::class);
             $this->app['router']->aliasMiddleware('permission', VerifyPermission::class);
         }
     }

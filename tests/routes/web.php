@@ -2,50 +2,18 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('welcome', function () {
+Route::get('permission/view.users', fn () => true)->middleware('permission:view.users');
+Route::get('permission/create.users', fn () => true)->middleware('permission:create.users');
+Route::get('permission/edit.users', fn () => true)->middleware('permission:edit.users');
+Route::get('permission/delete.users', fn () => true)->middleware('permission:delete.users');
+Route::get('permission/restore.users', fn () => true)->middleware('permission:restore.users');
+Route::get('permission/destroy.users', fn () => true)->middleware('permission:destroy.users');
 
-});
+Route::post('permission/view.users', fn () => true)->middleware('permission:view.users');
+Route::post('permission/create.users', fn () => true)->middleware('permission:create.users');
+Route::post('permission/edit.users', fn () => true)->middleware('permission:edit.users');
+Route::post('permission/delete.users', fn () => true)->middleware('permission:delete.users');
+Route::post('permission/restore.users', fn () => true)->middleware('permission:restore.users');
+Route::post('permission/destroy.users', fn () => true)->middleware('permission:destroy.users');
 
-Route::middleware('auth')->get('profile', function () {
-
-});
-
-Route::middleware(['auth', 'permission:create.users'])->post('users/create', function () {
-
-});
-
-Route::middleware(['auth', 'can:view.users'])->post('users/view', function () {
-
-});
-
-Route::middleware(['auth', 'can:update.users'])->post('users/update', function () {
-
-});
-
-Route::middleware(['auth', 'permission:delete.users'])->post('users/delete', function () {
-
-});
-
-Route::middleware(['auth', 'permission:create.permissions'])->post('permissions/create', function () {
-
-});
-
-Route::middleware(['auth', 'can:view.permissions'])->post('permissions/view', function () {
-
-});
-
-Route::middleware(['auth', 'can:update.permissions'])->post('permissions/update', function () {
-
-});
-
-Route::middleware(['auth', 'permission:delete.permissions'])->post('permissions/delete', function () {
-
-});
-
-Route::middleware(['auth', 'permission:create.permissions,delete.permissions'])->post('permissions/create/delete', function () {
-
-});
-
-Route::middleware(['auth', 'permission:view.permissions|update.permissions'])->post('permissions/view/update', function () {
-
-});
+Route::post('permission/view.users/create.users/edit.users', fn () => true)->middleware('permission:view.users,create.users,edit.users');
