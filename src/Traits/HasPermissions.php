@@ -122,7 +122,7 @@ trait HasPermissions
      */
     public function detachAllPermissions(): bool
     {
-        if ($this->permissions->isEmpty()) {
+        if ($this->getPermissions()->isEmpty()) {
             return false;
         }
 
@@ -264,7 +264,7 @@ trait HasPermissions
      */
     protected function checkPermission(Model $permission): bool
     {
-        return $this->permissions->contains(fn ($item) => $item->is($permission));
+        return $this->getPermissions()->contains(fn ($item) => $item->is($permission));
     }
 
     /**
@@ -374,7 +374,7 @@ trait HasPermissions
     {
         return array_values(array_filter(
             $permissions,
-            fn ($permission) => $this->permissions->contains(fn ($item) => $item->is($permission))
+            fn ($permission) => $this->getPermissions()->contains(fn ($item) => $item->is($permission))
         ));
     }
 
