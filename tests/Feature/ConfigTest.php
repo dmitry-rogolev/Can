@@ -99,7 +99,7 @@ class ConfigTest extends TestCase
     /**
      * Есть ли конфигурация имени фабрики модели разрешений?
      */
-    public function test_factories_role(): void
+    public function test_factories_permission(): void
     {
         $this->assertTrue(class_exists(config('can.factories.permission')));
     }
@@ -107,7 +107,7 @@ class ConfigTest extends TestCase
     /**
      * Есть ли конфигурация имени сидера модели разрешений?
      */
-    public function test_seeders_role(): void
+    public function test_seeders_permission(): void
     {
         $this->assertTrue(class_exists(config('can.seeders.permission')));
     }

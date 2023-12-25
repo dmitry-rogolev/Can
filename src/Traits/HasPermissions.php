@@ -59,7 +59,7 @@ trait HasPermissions
         //
         // Наконец, заменяем модели на их идентификаторы,
         // так как метод attach ожидает массив идентификаторов.
-        $permissions = $this->getModelsForAttach($permission);
+        $permissions = $this->getPermissionsForAttach($permission);
 
         if (empty($permissions)) {
             return false;
@@ -98,7 +98,7 @@ trait HasPermissions
         //
         // Наконец, заменяем модели на их идентификаторы,
         // так как метод detach ожидает массив идентификаторов.
-        $permissions = $this->getModelsForDetach($permissions);
+        $permissions = $this->getPermissionsForDetach($permissions);
 
         if (empty($permissions)) {
             return false;
@@ -286,6 +286,17 @@ trait HasPermissions
     }
 
     /**
+     * Заменяет модели на их идентификаторы.
+     *
+     * @param  array<int, \Illuminate\Database\Eloquent\Model>  $models
+     * @return array<int, mixed>
+     */
+    protected function modelsToIds(array $models): array
+    {
+        return collect($models)->pluck($this->getKeyName())->all();
+    }
+
+    /**
      * Заменяет идентификаторы и slug'и на модели.
      *
      * @param  array<int, mixed>  $permissions
@@ -368,23 +379,12 @@ trait HasPermissions
     }
 
     /**
-     * Заменяет модели на их идентификаторы.
-     *
-     * @param  array<int, \Illuminate\Database\Eloquent\Model>  $permissions
-     * @return array<int, mixed>
-     */
-    protected function modelsToIds(array $permissions): array
-    {
-        return collect($permissions)->pluck($this->getKeyName())->all();
-    }
-
-    /**
      * Возвращает модели разрешений, которые могут быть присоединены к модели.
      *
      * @param  array<int, mixed>  $permissions
      * @return array<int, mixed>
      */
-    protected function getModelsForAttach(array $permissions): array
+    protected function getPermissionsForAttach(array $permissions): array
     {
         return $this->modelsToIds(
             $this->notAttachedFilter(
@@ -399,7 +399,7 @@ trait HasPermissions
      * @param  array<int, mixed>  $permissions
      * @return array<int, mixed>
      */
-    protected function getModelsForDetach(array $permissions): array
+    protected function getPermissionsForDetach(array $permissions): array
     {
         return $this->modelsToIds(
             $this->attachedFilter(
