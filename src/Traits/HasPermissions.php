@@ -302,11 +302,11 @@ trait HasPermissions
      * @param  array<int, mixed>  $permissions
      * @return array<int, \Illuminate\Database\Eloquent\Model>
      */
-    protected function replaceIdsWithModels(array $permissions): array
+    protected function replaceIdsWithPermissions(array $permissions): array
     {
         // Сортируем переданный массив. Складываем модели в один массив,
         // а идентификаторы и slug'и в другой массив.
-        [$result, $ids] = $this->sortModelsAndIds($permissions);
+        [$result, $ids] = $this->sortPermissionsAndIds($permissions);
 
         // Если были переданы идентификаторы и(или) slug'и, получаем по ним модели,
         // а затем добавляем их в результирующий массив.
@@ -324,7 +324,7 @@ trait HasPermissions
      * @param  array<int, mixed>  $permissions
      * @return array<int, array<int, mixed>>
      */
-    protected function sortModelsAndIds(array $permissions): array
+    protected function sortPermissionsAndIds(array $permissions): array
     {
         $ids = [];
         $models = [];
@@ -348,7 +348,7 @@ trait HasPermissions
      */
     protected function parsePermissions(mixed $permissions): array
     {
-        return $this->replaceIdsWithModels(
+        return $this->replaceIdsWithPermissions(
             $this->toFlattenArray($permissions)
         );
     }
@@ -359,7 +359,7 @@ trait HasPermissions
      * @param  array<int, \Illuminate\Database\Eloquent\Model>  $permissions
      * @return array<int, \Illuminate\Database\Eloquent\Model>
      */
-    protected function notAttachedFilter(array $permissions): array
+    protected function notAttachedPermissionsFilter(array $permissions): array
     {
         return array_values(array_filter($permissions, fn ($permission) => ! $this->checkPermission($permission)));
     }
@@ -370,7 +370,7 @@ trait HasPermissions
      * @param  array<int, \Illuminate\Database\Eloquent\Model>  $permissions
      * @return array<int, \Illuminate\Database\Eloquent\Model>
      */
-    protected function attachedFilter(array $permissions): array
+    protected function attachedPermissionsFilter(array $permissions): array
     {
         return array_values(array_filter(
             $permissions,
@@ -387,7 +387,7 @@ trait HasPermissions
     protected function getPermissionsForAttach(array $permissions): array
     {
         return $this->modelsToIds(
-            $this->notAttachedFilter(
+            $this->notAttachedPermissionsFilter(
                 $this->parsePermissions($permissions)
             )
         );
@@ -402,7 +402,7 @@ trait HasPermissions
     protected function getPermissionsForDetach(array $permissions): array
     {
         return $this->modelsToIds(
-            $this->attachedFilter(
+            $this->attachedPermissionsFilter(
                 $this->parsePermissions($permissions)
             )
         );
